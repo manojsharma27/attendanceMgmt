@@ -8,4 +8,5 @@
     <string name="error_invalid_pin">This pin is invalid</string>
     <string name="error_short_pin">This pin is too short</string>
     <string name="error_field_required">This field is required</string>
+    <string name="dummy_pin">9999</string>
 </resources>

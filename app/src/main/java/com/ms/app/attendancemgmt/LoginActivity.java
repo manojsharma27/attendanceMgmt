@@ -33,7 +33,7 @@ import java.util.List;
  */
 public class LoginActivity extends AppCompatActivity {
 
-    private static final String DUMMY_PIN = "9999";
+    private static final int LOGIN_DELAY = 1000;
     /**
      * Keep track of the login task to ensure we can cancel it if requested.
      */
@@ -170,13 +170,13 @@ public class LoginActivity extends AppCompatActivity {
 
             try {
                 // Simulate network access.
-                Thread.sleep(1000);
+                Thread.sleep(LOGIN_DELAY);
             } catch (InterruptedException e) {
                 return false;
             }
 
             // TODO: register the new account here.
-            return pin.equals(DUMMY_PIN);
+            return pin.equals(getString(R.string.dummy_pin));
         }
 
         @Override
