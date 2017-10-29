@@ -7,5 +7,5 @@ package com.ms.app.attendancemgmt.util;
 public class Constants {
     public static final String EMP_PIN = "emp_pin";
     public static final String HELLO_NAME = "Hello, %s";
-
+    public static final String LOG_TAG = "AttendMgmt_tag";
 }

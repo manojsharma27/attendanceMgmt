@@ -14,13 +14,9 @@ import android.location.LocationManager;
 import android.os.Bundle;
 import android.provider.Settings;
 import android.support.v4.app.ActivityCompat;
-import android.support.v4.content.PermissionChecker;
 import android.support.v7.app.AppCompatActivity;
 
 import com.ms.app.attendancemgmt.util.Utility;
-
-import java.security.AccessController;
-import java.security.Permission;
 
 public class LocationHandler extends AppCompatActivity {
     private static final int PERMISSION_REQUEST_CODE = 99;

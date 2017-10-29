@@ -7,10 +7,8 @@ import android.widget.Toast;
 import com.ms.app.attendancemgmt.data.SampleData;
 import com.ms.app.attendancemgmt.model.Employee;
 
-import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.Optional;
 import java.util.TimeZone;
 
 public class Utility {

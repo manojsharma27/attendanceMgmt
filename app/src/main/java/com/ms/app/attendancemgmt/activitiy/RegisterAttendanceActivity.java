@@ -11,29 +11,28 @@ import android.location.Criteria;
 import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
+import android.os.Bundle;
 import android.provider.Settings;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
-import android.os.Bundle;
-import android.telephony.TelephonyManager;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ProgressBar;
 import android.widget.TextView;
-import android.widget.Toast;
 
 import com.ms.app.attendancemgmt.R;
-import com.ms.app.attendancemgmt.location.LocationHandler;
 import com.ms.app.attendancemgmt.model.Attendance;
 import com.ms.app.attendancemgmt.model.Employee;
+import com.ms.app.attendancemgmt.register.UpdateAttendance;
 import com.ms.app.attendancemgmt.util.Constants;
 import com.ms.app.attendancemgmt.util.Utility;
 
 import org.apache.commons.lang3.ArrayUtils;
-import org.apache.commons.lang3.StringUtils;
 
 import java.util.Date;
+
+import okhttp3.Response;
 
 public class RegisterAttendanceActivity extends AppCompatActivity {
     private static final int PERMISSION_REQUEST_CODE = 99;
@@ -88,6 +87,10 @@ public class RegisterAttendanceActivity extends AppCompatActivity {
         alertDialog.show();
     }
 
+    public ProgressBar getPbRegAttend() {
+        return pbRegAttend;
+    }
+
     @Override
     public void finish() {
         super.finish();
@@ -110,8 +113,12 @@ public class RegisterAttendanceActivity extends AppCompatActivity {
             attendance.setLongitude(location.getLongitude());
         }
 
-        String attendanceMsgFormat = "Registered attendance for %s. Location: (%s, %s)";
-        Utility.toastMsg(context, String.format(attendanceMsgFormat, emp.getName(), attendance.getLatitude(), attendance.getLongitude()));
+        UpdateAttendance updateAttendance = new UpdateAttendance(this, attendance);
+        updateAttendance.register();
+    }
+
+    public void handleRegisterAttendanceResponse(Response response) {
+        Utility.toastMsg(context, response.message());
     }
 
     private void configureLocationManager() {

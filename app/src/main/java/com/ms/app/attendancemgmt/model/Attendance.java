@@ -1,7 +1,5 @@
 package com.ms.app.attendancemgmt.model;
 
-import android.location.Geocoder;
-
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.ms.app.attendancemgmt.util.Utility;
 
@@ -57,5 +55,17 @@ public class Attendance {
 
     public void setMarkTime(Date markTime) {
         this.markTime = markTime;
+    }
+
+    @Override
+    public String toString() {
+        final StringBuilder sb = new StringBuilder("Attendance{");
+        sb.append("empId='").append(empId).append('\'');
+        sb.append(", deviceId='").append(deviceId).append('\'');
+        sb.append(", latitude=").append(latitude);
+        sb.append(", longitude=").append(longitude);
+        sb.append(", markTime=").append(markTime);
+        sb.append('}');
+        return sb.toString();
     }
 }
