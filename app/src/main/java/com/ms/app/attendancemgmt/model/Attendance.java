@@ -13,6 +13,7 @@ import java.util.Date;
 public class Attendance {
 
     private String empId;
+    private String deviceId;
     private double latitude;
     private double longitude;
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = Utility.DATE_FORMAT, timezone = "UTC")
@@ -24,6 +25,14 @@ public class Attendance {
 
     public String getEmpId() {
         return empId;
+    }
+
+    public String getDeviceId() {
+        return deviceId;
+    }
+
+    public void setDeviceId(String deviceId) {
+        this.deviceId = deviceId;
     }
 
     public double getLatitude() {

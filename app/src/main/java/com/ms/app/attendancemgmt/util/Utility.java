@@ -1,6 +1,9 @@
 package com.ms.app.attendancemgmt.util;
 
 
+import android.content.Context;
+import android.widget.Toast;
+
 import com.ms.app.attendancemgmt.data.SampleData;
 import com.ms.app.attendancemgmt.model.Employee;
 
@@ -41,5 +44,9 @@ public class Utility {
             }
         }
         return null;
+    }
+
+    public static void toastMsg(Context context, String msg) {
+        Toast.makeText(context, msg, Toast.LENGTH_SHORT).show();
     }
 }
