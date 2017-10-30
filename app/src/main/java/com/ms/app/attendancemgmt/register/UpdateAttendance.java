@@ -26,13 +26,11 @@ public class UpdateAttendance {
     private static final String HOST_NAME = "http://www.example.com";
     private static final String REG_ATTENDANCE_ENDPOINT = HOST_NAME + "/register";
     private Attendance attendance;
-    private ProgressBar pbRegAttend;
     private RegisterAttendanceActivity regAttendActivity;
 
     public UpdateAttendance(RegisterAttendanceActivity regAttendActivity, Attendance attendance) {
         this.regAttendActivity = regAttendActivity;
         this.attendance = attendance;
-        this.pbRegAttend = regAttendActivity.getPbRegAttend();
     }
 
     public void register() {
@@ -78,26 +76,26 @@ public class UpdateAttendance {
         @Override
         protected void onPreExecute() {
             super.onPreExecute();
-            pbRegAttend.setVisibility(View.VISIBLE);
+            regAttendActivity.showProgressBar(true);
         }
 
         @Override
         protected void onCancelled() {
             super.onCancelled();
-            pbRegAttend.setVisibility(View.GONE);
+            regAttendActivity.showProgressBar(false);
         }
 
         @Override
         protected void onPostExecute(Response response) {
             super.onPostExecute(response);
-            pbRegAttend.setVisibility(View.GONE);
+            regAttendActivity.showProgressBar(false);
             regAttendActivity.handleRegisterAttendanceResponse(response);
         }
 
         @Override
         protected void onProgressUpdate(Integer... values) {
             super.onProgressUpdate(values);
-            pbRegAttend.setProgress(values[0]);
+            regAttendActivity.updateProgressBar(values[0]);
         }
     }
 }

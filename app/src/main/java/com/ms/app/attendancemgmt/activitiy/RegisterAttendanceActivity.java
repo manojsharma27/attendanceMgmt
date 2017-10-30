@@ -42,6 +42,7 @@ public class RegisterAttendanceActivity extends AppCompatActivity {
     private Location location;
     private LocationManager locationManager;
     private ProgressBar pbRegAttend;
+    private View register_attendance_form;
 
     @Override
     protected void onCreate(Bundle bundle) {
@@ -58,8 +59,10 @@ public class RegisterAttendanceActivity extends AppCompatActivity {
         tvEmpName = (TextView) findViewById(R.id.tvEmpName);
         tvEmpName.setText(String.format(Constants.HELLO_NAME, employee.getName()));
 
-        pbRegAttend = (ProgressBar) findViewById(R.id.pb_register_attendance);
+        pbRegAttend = findViewById(R.id.pb_register_attendance);
         pbRegAttend.setVisibility(View.GONE);
+
+        register_attendance_form = findViewById(R.id.register_attendance_form);
 
         Button btnRegAttendance = (Button) findViewById(R.id.btnRegisterAttendance);
         btnRegAttendance.setOnClickListener(new View.OnClickListener() {
@@ -87,8 +90,12 @@ public class RegisterAttendanceActivity extends AppCompatActivity {
         alertDialog.show();
     }
 
-    public ProgressBar getPbRegAttend() {
-        return pbRegAttend;
+    public void updateProgressBar(int value) {
+        pbRegAttend.setProgress(value);
+    }
+    public void showProgressBar(boolean show) {
+        pbRegAttend.setVisibility(show ? View.VISIBLE : View.GONE);
+        register_attendance_form.setVisibility(show ? View.GONE : View.VISIBLE);
     }
 
     @Override
