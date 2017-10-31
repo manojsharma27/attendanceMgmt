@@ -16,6 +16,7 @@ import android.provider.Settings;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
+import android.telephony.TelephonyManager;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ProgressBar;
@@ -35,12 +36,15 @@ import java.util.Date;
 import okhttp3.Response;
 
 public class RegisterAttendanceActivity extends AppCompatActivity {
-    private static final int PERMISSION_REQUEST_CODE = 99;
+    private static final int LOCATION_PERMISSION_REQUEST_CODE = 191;
+    private static final int PHONE_STATE_PERMISSION_REQUEST_CODE = 192;
     private TextView tvEmpName;
     private AlertDialog alertDialog;
     private Context context;
-    private Location location;
     private LocationManager locationManager;
+    private TelephonyManager telephonyManager;
+    private Location location;
+    private String deviceId;
     private ProgressBar pbRegAttend;
     private View register_attendance_form;
 
@@ -56,7 +60,7 @@ public class RegisterAttendanceActivity extends AppCompatActivity {
             return;
         }
 
-        tvEmpName = (TextView) findViewById(R.id.tvEmpName);
+        tvEmpName = findViewById(R.id.tvEmpName);
         tvEmpName.setText(String.format(Constants.HELLO_NAME, employee.getName()));
 
         pbRegAttend = findViewById(R.id.pb_register_attendance);
@@ -64,11 +68,12 @@ public class RegisterAttendanceActivity extends AppCompatActivity {
 
         register_attendance_form = findViewById(R.id.register_attendance_form);
 
-        Button btnRegAttendance = (Button) findViewById(R.id.btnRegisterAttendance);
+        Button btnRegAttendance = findViewById(R.id.btnRegisterAttendance);
         btnRegAttendance.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 updateLocation();
+                checkAndRequestDeviceIdPermission();
                 registerAttendance(employee);
             }
         });
@@ -93,6 +98,7 @@ public class RegisterAttendanceActivity extends AppCompatActivity {
     public void updateProgressBar(int value) {
         pbRegAttend.setProgress(value);
     }
+
     public void showProgressBar(boolean show) {
         pbRegAttend.setVisibility(show ? View.VISIBLE : View.GONE);
         register_attendance_form.setVisibility(show ? View.GONE : View.VISIBLE);
@@ -113,12 +119,17 @@ public class RegisterAttendanceActivity extends AppCompatActivity {
 
     private void registerAttendance(Employee emp) {
         Attendance attendance = new Attendance(emp.getEmpId());
-        attendance.setMarkTime(new Date());
+        attendance.setTime(new Date());
         // TODO : get uniqueId for app installation
         if (null != location) {
-            attendance.setLatitude(location.getLatitude());
-            attendance.setLongitude(location.getLongitude());
+            attendance.setLat(location.getLatitude());
+            attendance.setLon(location.getLongitude());
         }
+        if (null == telephonyManager) {
+            checkAndRequestDeviceIdPermission();
+            populateDeviceId();
+        }
+        attendance.setDevId(deviceId);
 
         UpdateAttendance updateAttendance = new UpdateAttendance(this, attendance);
         updateAttendance.register();
@@ -151,9 +162,9 @@ public class RegisterAttendanceActivity extends AppCompatActivity {
         }
     }
 
-    private boolean checkLocationPermission() {
+    private boolean checkAndRequestLocationPermission() {
         if (ActivityCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions((Activity) context, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, PERMISSION_REQUEST_CODE);
+            ActivityCompat.requestPermissions((Activity) context, new String[]{Manifest.permission.ACCESS_FINE_LOCATION}, LOCATION_PERMISSION_REQUEST_CODE);
             return false;
         }
         return true;
@@ -184,10 +195,15 @@ public class RegisterAttendanceActivity extends AppCompatActivity {
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-        if (requestCode == PERMISSION_REQUEST_CODE) {
-            if (!ArrayUtils.isEmpty(grantResults) && PackageManager.PERMISSION_GRANTED == grantResults[0]) {
-                // permission granted
-                updateLocation();
+        // check for requestCode after permission is granted
+        if (!ArrayUtils.isEmpty(grantResults) && PackageManager.PERMISSION_GRANTED == grantResults[0]) {
+            switch (requestCode) {
+                case LOCATION_PERMISSION_REQUEST_CODE:
+                    updateLocation();
+                    break;
+                case PHONE_STATE_PERMISSION_REQUEST_CODE:
+                    populateDeviceId();
+                    break;
             }
         }
     }
@@ -195,7 +211,7 @@ public class RegisterAttendanceActivity extends AppCompatActivity {
     @Override
     protected void onResume() {
         super.onResume();
-        if (checkLocationPermission()) {
+        if (checkAndRequestLocationPermission()) {
             updateLocation();
         }
     }
@@ -223,5 +239,30 @@ public class RegisterAttendanceActivity extends AppCompatActivity {
         public void onProviderDisabled(String s) {
 
         }
+    }
+
+    // Code for fetching deviceId
+
+    private void configureTelephonyManager() {
+        if (null == telephonyManager) {
+            telephonyManager = (TelephonyManager) getSystemService(TELEPHONY_SERVICE);
+        }
+    }
+
+    private void populateDeviceId() {
+        configureTelephonyManager();
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED) {
+            deviceId = telephonyManager.getDeviceId();
+        } else {
+            deviceId = null;
+        }
+    }
+
+    private boolean checkAndRequestDeviceIdPermission() {
+        if (ActivityCompat.checkSelfPermission(context, Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions((Activity) context, new String[]{Manifest.permission.READ_PHONE_STATE}, PHONE_STATE_PERMISSION_REQUEST_CODE);
+            return false;
+        }
+        return true;
     }
 }

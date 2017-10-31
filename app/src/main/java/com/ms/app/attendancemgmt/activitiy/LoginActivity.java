@@ -178,8 +178,6 @@ public class LoginActivity extends AppCompatActivity {
             showProgress(false);
 
             if (success) {
-                // TODO: load main activity
-//                finish();
                 loadRegisterAttendanceActivity();
             } else {
                 txtPin.setError(getString(R.string.error_invalid_pin));

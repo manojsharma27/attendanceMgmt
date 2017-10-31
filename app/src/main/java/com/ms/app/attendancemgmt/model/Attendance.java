@@ -10,61 +10,61 @@ import java.util.Date;
  */
 public class Attendance {
 
-    private String empId;
-    private String deviceId;
-    private double latitude;
-    private double longitude;
+    private String id;
+    private String devId;
+    private double lat;
+    private double lon;
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = Utility.DATE_FORMAT, timezone = "UTC")
-    private Date markTime;
+    private Date time;
 
-    public Attendance(String empId) {
-        this.empId = empId;
+    public Attendance(String id) {
+        this.id = id;
     }
 
-    public String getEmpId() {
-        return empId;
+    public String getId() {
+        return id;
     }
 
-    public String getDeviceId() {
-        return deviceId;
+    public String getDevId() {
+        return devId;
     }
 
-    public void setDeviceId(String deviceId) {
-        this.deviceId = deviceId;
+    public void setDevId(String devId) {
+        this.devId = devId;
     }
 
-    public double getLatitude() {
-        return latitude;
+    public double getLat() {
+        return lat;
     }
 
-    public void setLatitude(double latitude) {
-        this.latitude = latitude;
+    public void setLat(double lat) {
+        this.lat = lat;
     }
 
-    public double getLongitude() {
-        return longitude;
+    public double getLon() {
+        return lon;
     }
 
-    public void setLongitude(double longitude) {
-        this.longitude = longitude;
+    public void setLon(double lon) {
+        this.lon = lon;
     }
 
-    public Date getMarkTime() {
-        return markTime;
+    public Date getTime() {
+        return time;
     }
 
-    public void setMarkTime(Date markTime) {
-        this.markTime = markTime;
+    public void setTime(Date time) {
+        this.time = time;
     }
 
     @Override
     public String toString() {
         final StringBuilder sb = new StringBuilder("Attendance{");
-        sb.append("empId='").append(empId).append('\'');
-        sb.append(", deviceId='").append(deviceId).append('\'');
-        sb.append(", latitude=").append(latitude);
-        sb.append(", longitude=").append(longitude);
-        sb.append(", markTime=").append(markTime);
+        sb.append("id='").append(id).append('\'');
+        sb.append(", devId='").append(devId).append('\'');
+        sb.append(", lat=").append(lat);
+        sb.append(", lon=").append(lon);
+        sb.append(", time=").append(time);
         sb.append('}');
         return sb.toString();
     }

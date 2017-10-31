@@ -57,7 +57,7 @@ public class UpdateAttendance {
 //                    TODO: uncomment following for actual service call
 //                    return client.newCall(request).execute();
                     Thread.sleep(1000);
-
+//                    TODO: remove following after integration with actual service
                     return new Response.Builder()
                             .message("Registration complete for " + attendances[0].toString())
                             .request(request)
