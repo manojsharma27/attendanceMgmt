@@ -9,6 +9,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
+import android.util.Log;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.View.OnClickListener;
@@ -17,9 +18,21 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.JsonNodeFactory;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.databind.node.TextNode;
 import com.ms.app.attendancemgmt.R;
 import com.ms.app.attendancemgmt.util.Constants;
 import com.ms.app.attendancemgmt.util.Utility;
+
+import java.io.IOException;
+
+import okhttp3.MediaType;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
 
 /**
  * A login screen that offers login via email/password.
@@ -36,13 +49,14 @@ public class LoginActivity extends AppCompatActivity {
     private EditText txtPin;
     private View mProgressView;
     private View mLoginFormView;
+    private static final String AUTHENTICATE_PIN_ENDPOINT = "";
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
 
-        txtPin = (EditText) findViewById(R.id.pin);
+        txtPin = findViewById(R.id.pin);
         txtPin.setOnEditorActionListener(new TextView.OnEditorActionListener() {
             @Override
             public boolean onEditorAction(TextView textView, int id, KeyEvent keyEvent) {
@@ -54,7 +68,7 @@ public class LoginActivity extends AppCompatActivity {
             }
         });
 
-        Button btnLogin = (Button) findViewById(R.id.btnLogin);
+        Button btnLogin = findViewById(R.id.btnLogin);
         btnLogin.setOnClickListener(new OnClickListener() {
             @Override
             public void onClick(View view) {
@@ -160,6 +174,27 @@ public class LoginActivity extends AppCompatActivity {
         @Override
         protected Boolean doInBackground(Void... params) {
             // TODO: attempt authentication against a network service.
+//            ObjectNode objectNode = new ObjectNode(JsonNodeFactory.instance);
+//            objectNode.set("pin", new TextNode(pin));
+//            OkHttpClient client = new OkHttpClient();
+//            RequestBody body = RequestBody.create(MediaType.parse("application/json"), objectNode.toString());
+//            Request request = new Request.Builder()
+//                    .url(AUTHENTICATE_PIN_ENDPOINT)
+//                    .addHeader("Content-Type", "application/json")
+//                    .post(body)
+//                    .build();
+//            Response response = null;
+//            try {
+//                response = client.newCall(request).execute();
+//            } catch (IOException e) {
+//                Log.e(Constants.LOG_TAG, "Exception while authenticating pin. ", e);
+//            }
+////                    TODO: uncomment following for actual service call
+//
+//            if (null == response) {
+//                return false;
+//            }
+            //TODO: check response of authentication and behave accordingly.
 
             try {
                 // Simulate network access.
