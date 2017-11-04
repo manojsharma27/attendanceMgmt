@@ -22,8 +22,8 @@ import android.util.Log;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
-import android.widget.Button;
 import android.widget.ProgressBar;
+import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -67,10 +67,10 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
     private TelephonyManager telephonyManager;
     private String deviceId;
     private ProgressBar pbRegAttend;
-    private View register_attendance_form;
+    private View reg_attend_form;
 
-    private Button btnRegAttendance;
     private TextView tvAddress;
+    private TextView tvEmpty;
 
     private final static int PLAY_SERVICES_REQUEST = 1000;
     private final static int REQUEST_CHECK_SETTINGS = 2000;
@@ -94,7 +94,7 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
     @Override
     protected void onCreate(Bundle bundle) {
         super.onCreate(bundle);
-        setContentView(R.layout.activity_register_attendance);
+        setContentView(R.layout.reg_attend_temp);
         context = RegisterAttendanceActivity.this;
         String empName = this.getIntent().getExtras().getString(Constants.EMP_NAME);
         final String empId = this.getIntent().getExtras().getString(Constants.EMP_ID);
@@ -105,23 +105,24 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
         }
 
         tvAddress = findViewById(R.id.tvAddress);
+        tvEmpty = findViewById(R.id.tvEmpty);
         TextView tvEmpName = findViewById(R.id.tvEmpName);
         tvEmpName.setText(String.format(Constants.HELLO_MSG, empName));
 
         pbRegAttend = findViewById(R.id.pb_register_attendance);
         pbRegAttend.setVisibility(View.GONE);
 
-        register_attendance_form = findViewById(R.id.register_attendance_form);
+        reg_attend_form = findViewById(R.id.reg_attend_form);
 
-        btnRegAttendance = findViewById(R.id.btnRegisterAttendance);
-        btnRegAttendance.setOnClickListener(new View.OnClickListener() {
+        RelativeLayout rlRegAttend = findViewById(R.id.rlRegAttendance);
+        rlRegAttend.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 getLocation();
                 if (mLastLocation != null) {
                     latitude = mLastLocation.getLatitude();
                     longitude = mLastLocation.getLongitude();
-                    getAddress();
+                    populateAddress();
                 } else {
                     Utility.toastMsg(context, "Couldn't get the location. Make sure location is enabled on the device");
                     return;
@@ -152,9 +153,7 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
             } catch (SecurityException e) {
                 e.printStackTrace();
             }
-
         }
-
     }
 
     public Address getAddress(double latitude, double longitude) {
@@ -169,12 +168,10 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
         } catch (IOException e) {
             e.printStackTrace();
         }
-
         return null;
-
     }
 
-    public void getAddress() {
+    public void populateAddress() {
 
         Address locationAddress = getAddress(latitude, longitude);
 
@@ -210,9 +207,9 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
                 if (!TextUtils.isEmpty(country))
                     currentLocation += "\n" + country;
 
-                tvAddress.setText(currentLocation);
+                tvAddress.setText("Your location:\n" + currentLocation);
                 tvAddress.setVisibility(View.VISIBLE);
-
+                tvEmpty.setVisibility(View.GONE);
             }
 
         }
@@ -388,7 +385,7 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
 
     public void showProgressBar(boolean show) {
         pbRegAttend.setVisibility(show ? View.VISIBLE : View.GONE);
-        register_attendance_form.setVisibility(show ? View.GONE : View.VISIBLE);
+        reg_attend_form.setVisibility(show ? View.GONE : View.VISIBLE);
     }
 
     @Override
@@ -401,7 +398,6 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
         super.onDestroy();
         if (null != alertDialog)
             alertDialog.dismiss();
-
     }
 
     private void registerAttendance(String empId) {

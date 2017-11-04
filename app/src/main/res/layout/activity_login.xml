@@ -8,6 +8,7 @@
     android:paddingLeft="@dimen/activity_horizontal_margin"
     android:paddingRight="@dimen/activity_horizontal_margin"
     android:paddingTop="@dimen/activity_vertical_margin"
+    android:background="@color/colorWhite"
     tools:context="com.ms.app.attendancemgmt.activitiy.LoginActivity">
 
     <!-- Login progress -->
@@ -51,6 +52,8 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="20dp"
+                android:background="@color/colorPrimary"
+                android:textColor="@color/colorWhite"
                 android:text="@string/action_login"
                 android:textAllCaps="false"
                 android:textStyle="normal"
