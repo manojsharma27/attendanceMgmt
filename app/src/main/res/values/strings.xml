@@ -14,4 +14,5 @@
     <string name="attendance_register">Register Attendance</string>
     <string name="setting_service_url">Service Url</string>
     <string name="button_change_setting">Change</string>
+    <string name="quotedesc">Welcome! Where should we deliver to?</string>
 </resources>

@@ -47,6 +47,28 @@
                 android:visibility="visible" />
         </LinearLayout>
 
+        <Button
+            android:id="@+id/btnPickLocation"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text="Pick Location"
+            android:textAllCaps="false"
+            android:textSize="18sp"
+            android:textStyle="normal" />
+
+        <TextView
+            android:id="@+id/tvAddress"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="20sp"
+            android:gravity="start"
+            android:text="Your Address: "
+            android:textAlignment="textStart"
+            android:textSize="20sp"
+            android:textStyle="normal" />
+
+
         <TextView
             android:id="@+id/tvEmpName"
             android:layout_width="match_parent"

@@ -82,6 +82,7 @@ public class LoginActivity extends AppCompatActivity {
 
         mLoginFormView = findViewById(R.id.settings_form);
         mProgressView = findViewById(R.id.login_progress);
+        Utility.loadPreferences(getApplicationContext());
     }
 
     /**
@@ -185,13 +186,9 @@ public class LoginActivity extends AppCompatActivity {
 
         @Override
         protected Boolean doInBackground(Void... params) {
-            // TODO: attempt authentication against a network service.
-//            ObjectNode objectNode = new ObjectNode(JsonNodeFactory.instance);
-//            objectNode.set("pin", new TextNode(pin));
             Response response = null;
             try {
                 OkHttpClient client = new OkHttpClient();
-//            RequestBody body = RequestBody.create(MediaType.parse("application/json"), objectNode.toString());
                 String finalUrl = Utility.getServiceUrl() + String.format(Constants.AUTHENTICATE_PIN_ENDPOINT, pin);
                 Request request = new Request.Builder()
                         .url(finalUrl)
@@ -202,26 +199,10 @@ public class LoginActivity extends AppCompatActivity {
             } catch (Exception e) {
                 Log.e(Constants.LOG_TAG, "Exception while authenticating pin. ", e);
             }
-            //TODO: check response of authentication and behave accordingly.
-
             if (null == response || !response.isSuccessful()) {
                 errorMsg = "Failed to connect to internet.";
                 return false;
             }
-
-//            try {
-//                String respStr = response.body().string();
-//                System.out.println(respStr);
-//            } catch (IOException e) {
-//                Log.e(Constants.LOG_TAG, "Exception while parsing response :" + response.body(), e);
-//            }
-
-//            try {
-//                // Simulate network access.
-//                Thread.sleep(LOGIN_DELAY);
-//            } catch (InterruptedException e) {
-//                return false;
-//            }
 
 //            String respStr = "{\"Status\":\"Success\",\"Message\":\"David Patterson\"}";
             ObjectMapper objectMapper = new ObjectMapper();
@@ -237,7 +218,6 @@ public class LoginActivity extends AppCompatActivity {
             } catch (IOException e) {
                 Log.e(Constants.LOG_TAG, "Exception while parsing response :" + response.body(), e);
             }
-            // TODO: register the new account here.
 //            return Utility.isPinValid(pin);
             errorMsg = "Pin not registered.";
             return false;
@@ -274,7 +254,7 @@ public class LoginActivity extends AppCompatActivity {
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {
-        getMenuInflater().inflate(R.menu.menu_settings, menu);
+        getMenuInflater().inflate(R.menu.menu_login, menu);
         return true;
     }
 

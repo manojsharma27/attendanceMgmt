@@ -1,35 +1,29 @@
-package com.ms.app.attendancemgmt.activitiy;
+package com.ms.app.attendancemgmt.location;
 
 import android.Manifest;
 import android.app.Activity;
-import android.app.AlertDialog;
-import android.content.Context;
-import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentSender;
-import android.content.pm.PackageManager;
 import android.location.Address;
 import android.location.Geocoder;
 import android.location.Location;
 import android.os.Bundle;
-import android.provider.Settings;
 import android.support.annotation.NonNull;
-import android.support.v4.app.ActivityCompat;
+import android.support.v4.app.ActivityCompat.OnRequestPermissionsResultCallback;
 import android.support.v7.app.AppCompatActivity;
-import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 import android.util.Log;
-import android.view.Menu;
-import android.view.MenuItem;
 import android.view.View;
 import android.widget.Button;
-import android.widget.ProgressBar;
+import android.widget.RelativeLayout;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
 import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.common.api.GoogleApiClient.ConnectionCallbacks;
+import com.google.android.gms.common.api.GoogleApiClient.OnConnectionFailedListener;
 import com.google.android.gms.common.api.PendingResult;
 import com.google.android.gms.common.api.ResultCallback;
 import com.google.android.gms.common.api.Status;
@@ -41,36 +35,24 @@ import com.google.android.gms.location.LocationSettingsStates;
 import com.google.android.gms.location.LocationSettingsStatusCodes;
 import com.ms.app.attendancemgmt.R;
 import com.ms.app.attendancemgmt.location.LocationUtil.PermissionUtils;
-import com.ms.app.attendancemgmt.model.Attendance;
-import com.ms.app.attendancemgmt.register.UpdateAttendance;
-import com.ms.app.attendancemgmt.util.Constants;
-import com.ms.app.attendancemgmt.util.Utility;
-
-import org.apache.commons.lang3.StringUtils;
 
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Date;
 import java.util.List;
 import java.util.Locale;
 
-import okhttp3.Response;
-
-public class RegisterAttendanceActivity extends AppCompatActivity implements GoogleApiClient.ConnectionCallbacks,
-        GoogleApiClient.OnConnectionFailedListener, ActivityCompat.OnRequestPermissionsResultCallback,
+public class MyLocationUsingLocationAPI extends AppCompatActivity implements ConnectionCallbacks,
+        OnConnectionFailedListener, OnRequestPermissionsResultCallback,
         PermissionUtils.PermissionResultCallback {
-    private static final int LOCATION_PERMISSION_REQUEST_CODE = 191;
-    private static final int PHONE_STATE_PERMISSION_REQUEST_CODE = 192;
-    public static final String MSG_OK = "OK";
-    private AlertDialog alertDialog;
-    private Context context;
-    private TelephonyManager telephonyManager;
-    private String deviceId;
-    private ProgressBar pbRegAttend;
-    private View register_attendance_form;
 
-    private Button btnRegAttendance;
-    private TextView tvAddress;
+    Button btnProceed;
+    TextView tvAddress;
+    TextView tvEmpty;
+    RelativeLayout rlPick;
+
+
+    // LogCat tag
+    private static final String TAG = "customTag";
 
     private final static int PLAY_SERVICES_REQUEST = 1000;
     private final static int REQUEST_CHECK_SETTINGS = 2000;
@@ -92,60 +74,70 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
     boolean isPermissionGranted;
 
     @Override
-    protected void onCreate(Bundle bundle) {
-        super.onCreate(bundle);
-        setContentView(R.layout.activity_register_attendance);
-        context = RegisterAttendanceActivity.this;
-        String empName = this.getIntent().getExtras().getString(Constants.EMP_NAME);
-        final String empId = this.getIntent().getExtras().getString(Constants.EMP_ID);
-//        final Employee employee = Utility.searchEmployeeFromPin(empName);
-        if (StringUtils.isEmpty(empId)) {
-            showEmpNotFoundDialog();
-            return;
-        }
+    protected void onCreate(Bundle savedInstanceState) {
+        super.onCreate(savedInstanceState);
+        setContentView(R.layout.activity_location_service);
 
-        tvAddress = findViewById(R.id.tvAddress);
-        TextView tvEmpName = findViewById(R.id.tvEmpName);
-        tvEmpName.setText(String.format(Constants.HELLO_MSG, empName));
+//        ButterKnife.bind(this);
+        btnProceed = (Button) findViewById(R.id.btnLocation);
+        tvAddress = (TextView) findViewById(R.id.tvAddress);
+        tvEmpty = (TextView) findViewById(R.id.tvEmpty);
+        rlPick = (RelativeLayout) findViewById(R.id.rlPickLocation);
 
-        pbRegAttend = findViewById(R.id.pb_register_attendance);
-        pbRegAttend.setVisibility(View.GONE);
+        permissionUtils = new PermissionUtils(MyLocationUsingLocationAPI.this);
 
-        register_attendance_form = findViewById(R.id.register_attendance_form);
+        permissions.add(Manifest.permission.ACCESS_FINE_LOCATION);
+        permissions.add(Manifest.permission.ACCESS_COARSE_LOCATION);
 
-        btnRegAttendance = findViewById(R.id.btnRegisterAttendance);
-        btnRegAttendance.setOnClickListener(new View.OnClickListener() {
+        permissionUtils.check_permission(permissions, "Need GPS permission for getting your location", 1);
+
+
+        rlPick.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
                 getLocation();
+
                 if (mLastLocation != null) {
                     latitude = mLastLocation.getLatitude();
                     longitude = mLastLocation.getLongitude();
                     getAddress();
+
                 } else {
-                    Utility.toastMsg(context, "Couldn't get the location. Make sure location is enabled on the device");
-                    return;
+
+                    if (btnProceed.isEnabled())
+                        btnProceed.setEnabled(false);
+
+                    showToast("Couldn't get the location. Make sure location is enabled on the device");
                 }
-                checkAndRequestDeviceIdPermission();
-                registerAttendance(empId);
             }
         });
 
-        setupPermissionUtils();
+
+        btnProceed.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                showToast("Proceed to the next step");
+            }
+        });
+
+        // check availability of play services
         if (checkPlayServices()) {
+
+            // Building the GoogleApi client
             buildGoogleApiClient();
         }
+
     }
 
-    private void setupPermissionUtils() {
-        permissionUtils = new PermissionUtils(RegisterAttendanceActivity.this);
-        permissions.add(Manifest.permission.ACCESS_FINE_LOCATION);
-        permissions.add(Manifest.permission.ACCESS_COARSE_LOCATION);
-        permissionUtils.check_permission(permissions, "Need GPS permission for getting your location", 1);
-    }
+
+    /**
+     * Method to display the location on UI
+     */
 
     private void getLocation() {
+
         if (isPermissionGranted) {
+
             try {
                 mLastLocation = LocationServices.FusedLocationApi
                         .getLastLocation(mGoogleApiClient);
@@ -173,6 +165,7 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
         return null;
 
     }
+
 
     public void getAddress() {
 
@@ -210,14 +203,23 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
                 if (!TextUtils.isEmpty(country))
                     currentLocation += "\n" + country;
 
+                tvEmpty.setVisibility(View.GONE);
                 tvAddress.setText(currentLocation);
                 tvAddress.setVisibility(View.VISIBLE);
+
+                if (!btnProceed.isEnabled())
+                    btnProceed.setEnabled(true);
+
 
             }
 
         }
 
     }
+
+    /**
+     * Creating google api client object
+     */
 
     protected synchronized void buildGoogleApiClient() {
         mGoogleApiClient = new GoogleApiClient.Builder(this)
@@ -253,7 +255,7 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
                         try {
                             // Show the dialog by calling startResolutionForResult(),
                             // and check the result in onActivityResult().
-                            status.startResolutionForResult(RegisterAttendanceActivity.this, REQUEST_CHECK_SETTINGS);
+                            status.startResolutionForResult(MyLocationUsingLocationAPI.this, REQUEST_CHECK_SETTINGS);
 
                         } catch (IntentSender.SendIntentException e) {
                             // Ignore the error.
@@ -294,6 +296,7 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
         return true;
     }
 
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         final LocationSettingsStates states = LocationSettingsStates.fromIntent(data);
@@ -314,9 +317,19 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
         }
     }
 
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        checkPlayServices();
+    }
+
+    /**
+     * Google api callback methods
+     */
     @Override
     public void onConnectionFailed(ConnectionResult result) {
-        Log.i(Constants.LOG_TAG, "Connection failed: ConnectionResult.getErrorCode() = "
+        Log.i(TAG, "Connection failed: ConnectionResult.getErrorCode() = "
                 + result.getErrorCode());
     }
 
@@ -344,6 +357,7 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
 
     }
 
+
     @Override
     public void PermissionGranted(int request_code) {
         Log.i("PERMISSION", "GRANTED");
@@ -365,176 +379,10 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
         Log.i("PERMISSION", "NEVER ASK AGAIN");
     }
 
-
-    private void showEmpNotFoundDialog() {
-        AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setTitle("Alert:");
-        builder.setMessage("Oops! Your details not found.");
-        builder.setNeutralButton("Ok", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialogInterface, int i) {
-                dialogInterface.cancel();
-                finish();
-            }
-        });
-        builder.setCancelable(false);
-        alertDialog = builder.create();
-        alertDialog.show();
-    }
-
-    public void updateProgressBar(int value) {
-        pbRegAttend.setProgress(value);
-    }
-
-    public void showProgressBar(boolean show) {
-        pbRegAttend.setVisibility(show ? View.VISIBLE : View.GONE);
-        register_attendance_form.setVisibility(show ? View.GONE : View.VISIBLE);
-    }
-
-    @Override
-    public void finish() {
-        super.finish();
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        if (null != alertDialog)
-            alertDialog.dismiss();
-
-    }
-
-    private void registerAttendance(String empId) {
-        Attendance attendance = new Attendance(empId);
-        attendance.setTime(new Date());
-        // TODO : get uniqueId for app installation
-        attendance.setLat(latitude);
-        attendance.setLon(longitude);
-        if (null == telephonyManager) {
-            checkAndRequestDeviceIdPermission();
-            populateDeviceId();
-        }
-        attendance.setDevId(deviceId);
-
-        UpdateAttendance updateAttendance = new UpdateAttendance(this, attendance);
-        updateAttendance.register();
-    }
-
-    public void handleRegisterAttendanceResponse(Response response, Attendance attendance) {
-        boolean isSuccess = (null != response && response.message().equals(MSG_OK));
-        String time = Utility.getTime();
-        String successMsg = String.format("Attendance registered at %s. \n Loc: (%s,%s)", time, attendance.getLon(), attendance.getLat());
-        String failedMsg = "Registration failed.\nUnable to connect to service.";
-        Utility.showMessageDialog(RegisterAttendanceActivity.this, isSuccess ? successMsg : failedMsg, isSuccess ? R.mipmap.right : R.mipmap.wrong);
-        Utility.toastMsg(context, isSuccess ? successMsg : failedMsg);
+    public void showToast(String message) {
+        Toast.makeText(this, message, Toast.LENGTH_SHORT).show();
     }
 
 
-    private void showGpsNotEnabledDialog() {
-        AlertDialog.Builder builder = new AlertDialog.Builder(context);
-        builder.setTitle("Alert:");
-        builder.setMessage("GPS is not enabled. Would you like to enable it?");
-        builder.setCancelable(false);
-        builder.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialogInterface, int i) {
-                Intent locationIntent = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
-                context.startActivity(locationIntent);
-            }
-        });
-        builder.setNegativeButton("No", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialogInterface, int i) {
-                dialogInterface.cancel();
-                Utility.toastMsg(context, "Attendance not registered.");
-            }
-        });
-        alertDialog = builder.create();
-        alertDialog.show();
-    }
-
-//    @Override
-//    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-//        // check for requestCode after permission is granted
-//        if (!ArrayUtils.isEmpty(grantResults) && PackageManager.PERMISSION_GRANTED == grantResults[0]) {
-//            switch (requestCode) {
-//                case LOCATION_PERMISSION_REQUEST_CODE:
-//
-//                    break;
-//                case PHONE_STATE_PERMISSION_REQUEST_CODE:
-//                    populateDeviceId();
-//                    break;
-//            }
-//        }
-//    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        checkPlayServices();
-        getLocation();
-    }
-
-//    private class CustomLocationListener implements LocationListener {
-//
-//        @Override
-//        public void onLocationChanged(Location loc) {
-//        }
-//
-//        @Override
-//        public void onStatusChanged(String s, int i, Bundle bundle) {
-//        }
-//
-//        @Override
-//        public void onProviderEnabled(String s) {
-//        }
-//
-//        @Override
-//        public void onProviderDisabled(String s) {
-//        }
-//    }
-
-    // Code for fetching deviceId
-
-    private void configureTelephonyManager() {
-        if (null == telephonyManager) {
-            telephonyManager = (TelephonyManager) getSystemService(TELEPHONY_SERVICE);
-        }
-    }
-
-    private void populateDeviceId() {
-        configureTelephonyManager();
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED) {
-            deviceId = telephonyManager.getDeviceId();
-        }
-
-        if (null == deviceId || deviceId.contains("000000")) {
-            deviceId = Settings.Secure.getString(getApplicationContext().getContentResolver(), Settings.Secure.ANDROID_ID);
-        }
-        Utility.toastMsg(this, "DeviceId: " + deviceId);
-    }
-
-    private boolean checkAndRequestDeviceIdPermission() {
-        if (ActivityCompat.checkSelfPermission(context, Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions((Activity) context, new String[]{Manifest.permission.READ_PHONE_STATE}, PHONE_STATE_PERMISSION_REQUEST_CODE);
-            return false;
-        }
-        return true;
-    }
-
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        getMenuInflater().inflate(R.menu.menu_register_attendance, menu);
-        return true;
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        switch (item.getItemId()) {
-            case R.id.mitemLogout:
-                finish();
-                return true;
-        }
-        return super.onOptionsItemSelected(item);
-    }
 }
+

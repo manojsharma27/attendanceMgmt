@@ -27,6 +27,7 @@
             </intent-filter>
         </activity>
         <activity android:name=".activitiy.RegisterAttendanceActivity" />
+        <activity android:name=".location.MyLocationUsingLocationAPI" />
     </application>
 
 </manifest>
