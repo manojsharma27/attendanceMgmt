@@ -12,6 +12,7 @@ import android.location.Location;
 import android.location.LocationListener;
 import android.location.LocationManager;
 import android.os.Bundle;
+import android.os.SystemClock;
 import android.provider.Settings;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
@@ -19,6 +20,7 @@ import android.support.v7.app.AppCompatActivity;
 import android.telephony.TelephonyManager;
 import android.view.View;
 import android.widget.Button;
+import android.widget.DigitalClock;
 import android.widget.ProgressBar;
 import android.widget.TextView;
 
@@ -30,7 +32,9 @@ import com.ms.app.attendancemgmt.util.Constants;
 import com.ms.app.attendancemgmt.util.Utility;
 
 import org.apache.commons.lang3.ArrayUtils;
+import org.apache.commons.lang3.StringUtils;
 
+import java.util.Calendar;
 import java.util.Date;
 
 import okhttp3.Response;
@@ -38,6 +42,7 @@ import okhttp3.Response;
 public class RegisterAttendanceActivity extends AppCompatActivity {
     private static final int LOCATION_PERMISSION_REQUEST_CODE = 191;
     private static final int PHONE_STATE_PERMISSION_REQUEST_CODE = 192;
+    public static final String MSG_OK = "OK";
     private TextView tvEmpName;
     private AlertDialog alertDialog;
     private Context context;
@@ -52,16 +57,17 @@ public class RegisterAttendanceActivity extends AppCompatActivity {
     protected void onCreate(Bundle bundle) {
         super.onCreate(bundle);
         setContentView(R.layout.activity_register_attendance);
-        context = this;
-        String pin = this.getIntent().getExtras().getString(Constants.EMP_PIN);
-        final Employee employee = Utility.searchEmployeeFromPin(pin);
-        if (null == employee) {
+        context = RegisterAttendanceActivity.this;
+        String empName = this.getIntent().getExtras().getString(Constants.EMP_NAME);
+        final String empId = this.getIntent().getExtras().getString(Constants.EMP_ID);
+//        final Employee employee = Utility.searchEmployeeFromPin(empName);
+        if (StringUtils.isEmpty(empId)) {
             showEmpNotFoundDialog();
             return;
         }
 
         tvEmpName = findViewById(R.id.tvEmpName);
-        tvEmpName.setText(String.format(Constants.HELLO_NAME, employee.getName()));
+        tvEmpName.setText(String.format(Constants.HELLO_NAME, empName));
 
         pbRegAttend = findViewById(R.id.pb_register_attendance);
         pbRegAttend.setVisibility(View.GONE);
@@ -74,7 +80,7 @@ public class RegisterAttendanceActivity extends AppCompatActivity {
             public void onClick(View view) {
                 updateLocation();
                 checkAndRequestDeviceIdPermission();
-                registerAttendance(employee);
+                registerAttendance(empId);
             }
         });
     }
@@ -117,8 +123,8 @@ public class RegisterAttendanceActivity extends AppCompatActivity {
 
     }
 
-    private void registerAttendance(Employee emp) {
-        Attendance attendance = new Attendance(emp.getEmpId());
+    private void registerAttendance(String empId) {
+        Attendance attendance = new Attendance(empId);
         attendance.setTime(new Date());
         // TODO : get uniqueId for app installation
         if (null != location) {
@@ -135,8 +141,13 @@ public class RegisterAttendanceActivity extends AppCompatActivity {
         updateAttendance.register();
     }
 
-    public void handleRegisterAttendanceResponse(Response response) {
-        Utility.toastMsg(context, response.message());
+    public void handleRegisterAttendanceResponse(Response response, Attendance attendance) {
+        boolean isSuccess = (null != response && response.message().equals(MSG_OK));
+        String time = Utility.getTime();
+        String successMsg = String.format("Attendance registered at %s. \n Loc: (%s,%s)", time, attendance.getLon(), attendance.getLat());
+        String failedMsg = "Registration failed.\nUnable to connect to service.";
+        Utility.showMessageDialog(RegisterAttendanceActivity.this, isSuccess ? successMsg : failedMsg, isSuccess ? R.mipmap.right : R.mipmap.wrong);
+        Utility.toastMsg(context, isSuccess ? successMsg : failedMsg);
     }
 
     private void configureLocationManager() {
@@ -227,17 +238,14 @@ public class RegisterAttendanceActivity extends AppCompatActivity {
 
         @Override
         public void onStatusChanged(String s, int i, Bundle bundle) {
-
         }
 
         @Override
         public void onProviderEnabled(String s) {
-
         }
 
         @Override
         public void onProviderDisabled(String s) {
-
         }
     }
 
@@ -253,9 +261,12 @@ public class RegisterAttendanceActivity extends AppCompatActivity {
         configureTelephonyManager();
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED) {
             deviceId = telephonyManager.getDeviceId();
-        } else {
-            deviceId = null;
         }
+
+        if (null == deviceId || deviceId.contains("000000")) {
+            deviceId = Settings.Secure.getString(getApplicationContext().getContentResolver(), Settings.Secure.ANDROID_ID);
+        }
+        Utility.toastMsg(this, "DeviceId: " + deviceId);
     }
 
     private boolean checkAndRequestDeviceIdPermission() {

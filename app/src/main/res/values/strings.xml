@@ -4,6 +4,7 @@
     <!-- Strings related to login -->
     <string name="prompt_pin">PIN</string>
     <string name="action_login">Login</string>
+    <string name="service_url">Service Url</string>
     <string name="action_login_short">Login</string>
     <string name="error_invalid_pin">This pin is invalid</string>
     <string name="error_short_pin">This pin is too short</string>
@@ -11,4 +12,6 @@
     <string name="dummy_pin">9999</string>
     <string name="attendance_user_name">Username</string>
     <string name="attendance_register">Register Attendance</string>
+    <string name="setting_service_url">Service Url</string>
+    <string name="button_change_setting">Change</string>
 </resources>

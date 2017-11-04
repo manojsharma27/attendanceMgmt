@@ -3,14 +3,19 @@ package com.ms.app.attendancemgmt.activitiy;
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.annotation.TargetApi;
+import android.app.AlertDialog;
+import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
+import android.text.InputType;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.KeyEvent;
+import android.view.Menu;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.inputmethod.EditorInfo;
@@ -19,19 +24,17 @@ import android.widget.EditText;
 import android.widget.TextView;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.node.JsonNodeFactory;
-import com.fasterxml.jackson.databind.node.ObjectNode;
-import com.fasterxml.jackson.databind.node.TextNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ms.app.attendancemgmt.R;
 import com.ms.app.attendancemgmt.util.Constants;
 import com.ms.app.attendancemgmt.util.Utility;
 
+import org.apache.commons.lang3.StringUtils;
+
 import java.io.IOException;
 
-import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
-import okhttp3.RequestBody;
 import okhttp3.Response;
 
 /**
@@ -49,7 +52,8 @@ public class LoginActivity extends AppCompatActivity {
     private EditText txtPin;
     private View mProgressView;
     private View mLoginFormView;
-    private static final String AUTHENTICATE_PIN_ENDPOINT = "";
+    private String empName;
+    private String empId;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -76,7 +80,7 @@ public class LoginActivity extends AppCompatActivity {
             }
         });
 
-        mLoginFormView = findViewById(R.id.login_form);
+        mLoginFormView = findViewById(R.id.settings_form);
         mProgressView = findViewById(R.id.login_progress);
     }
 
@@ -114,6 +118,13 @@ public class LoginActivity extends AppCompatActivity {
             // Show a progress spinner, and kick off a background task to
             // perform the user login attempt.
             showProgress(true);
+            if (StringUtils.isEmpty(Utility.getServiceUrl())) {
+                showProgress(false);
+                Utility.showMessageDialog(LoginActivity.this, "Service url not configured!", R.mipmap.wrong);
+                txtPin.setError(getString(R.string.error_invalid_pin));
+                txtPin.requestFocus();
+                return;
+            }
             mAuthTask = new UserLoginTask(pin);
             mAuthTask.execute((Void) null);
         }
@@ -166,6 +177,7 @@ public class LoginActivity extends AppCompatActivity {
     public class UserLoginTask extends AsyncTask<Void, Void, Boolean> {
 
         private final String pin;
+        private String errorMsg;
 
         UserLoginTask(String pin) {
             this.pin = pin;
@@ -176,35 +188,59 @@ public class LoginActivity extends AppCompatActivity {
             // TODO: attempt authentication against a network service.
 //            ObjectNode objectNode = new ObjectNode(JsonNodeFactory.instance);
 //            objectNode.set("pin", new TextNode(pin));
-//            OkHttpClient client = new OkHttpClient();
+            Response response = null;
+            try {
+                OkHttpClient client = new OkHttpClient();
 //            RequestBody body = RequestBody.create(MediaType.parse("application/json"), objectNode.toString());
-//            Request request = new Request.Builder()
-//                    .url(AUTHENTICATE_PIN_ENDPOINT)
-//                    .addHeader("Content-Type", "application/json")
-//                    .post(body)
-//                    .build();
-//            Response response = null;
-//            try {
-//                response = client.newCall(request).execute();
-//            } catch (IOException e) {
-//                Log.e(Constants.LOG_TAG, "Exception while authenticating pin. ", e);
-//            }
-////                    TODO: uncomment following for actual service call
-//
-//            if (null == response) {
-//                return false;
-//            }
+                String finalUrl = Utility.getServiceUrl() + String.format(Constants.AUTHENTICATE_PIN_ENDPOINT, pin);
+                Request request = new Request.Builder()
+                        .url(finalUrl)
+                        .addHeader("Content-Type", "application/json")
+                        .get()
+                        .build();
+                response = client.newCall(request).execute();
+            } catch (Exception e) {
+                Log.e(Constants.LOG_TAG, "Exception while authenticating pin. ", e);
+            }
             //TODO: check response of authentication and behave accordingly.
 
-            try {
-                // Simulate network access.
-                Thread.sleep(LOGIN_DELAY);
-            } catch (InterruptedException e) {
+            if (null == response || !response.isSuccessful()) {
+                errorMsg = "Failed to connect to internet.";
                 return false;
             }
 
+//            try {
+//                String respStr = response.body().string();
+//                System.out.println(respStr);
+//            } catch (IOException e) {
+//                Log.e(Constants.LOG_TAG, "Exception while parsing response :" + response.body(), e);
+//            }
+
+//            try {
+//                // Simulate network access.
+//                Thread.sleep(LOGIN_DELAY);
+//            } catch (InterruptedException e) {
+//                return false;
+//            }
+
+//            String respStr = "{\"Status\":\"Success\",\"Message\":\"David Patterson\"}";
+            ObjectMapper objectMapper = new ObjectMapper();
+            try {
+                String respStr = response.body().string();
+                JsonNode respNode = objectMapper.readTree(respStr);
+                JsonNode statusNode = respNode.get("Status");
+                if (null != statusNode && statusNode.asText().equals("Success")) {
+                    empName = respNode.get("Message").asText();
+                    empId = respNode.get("EmpId").asText();
+                    return true;
+                }
+            } catch (IOException e) {
+                Log.e(Constants.LOG_TAG, "Exception while parsing response :" + response.body(), e);
+            }
             // TODO: register the new account here.
-            return Utility.isPinValid(pin);
+//            return Utility.isPinValid(pin);
+            errorMsg = "Pin not registered.";
+            return false;
         }
 
         @Override
@@ -215,6 +251,7 @@ public class LoginActivity extends AppCompatActivity {
             if (success) {
                 loadRegisterAttendanceActivity();
             } else {
+                Utility.showMessageDialog(LoginActivity.this, errorMsg, R.mipmap.wrong);
                 txtPin.setError(getString(R.string.error_invalid_pin));
                 txtPin.requestFocus();
             }
@@ -228,10 +265,104 @@ public class LoginActivity extends AppCompatActivity {
     }
 
     private void loadRegisterAttendanceActivity() {
-        String pin = txtPin.getText().toString();
         Intent registerAttendanceIntent = new Intent(LoginActivity.this, RegisterAttendanceActivity.class);
-        registerAttendanceIntent.putExtra(Constants.EMP_PIN, pin);
+        registerAttendanceIntent.putExtra(Constants.EMP_ID, empId);
+        registerAttendanceIntent.putExtra(Constants.EMP_NAME, empName);
         startActivity(registerAttendanceIntent);
+    }
+
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.menu_settings, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+            case R.id.mitemSetService:
+                loadGetMasterPinDialog();
+                return true;
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
+    private void loadGetMasterPinDialog() {
+        AlertDialog.Builder dialogMasterPin = new AlertDialog.Builder(
+                LoginActivity.this);
+        dialogMasterPin.setTitle("Master Pin");
+        final EditText txtMasterPin = new EditText(LoginActivity.this);
+        txtMasterPin.setInputType(InputType.TYPE_CLASS_NUMBER);
+
+        dialogMasterPin.setView(txtMasterPin);
+        dialogMasterPin.setPositiveButton("Next",
+                new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int whichButton) {
+                        String value = txtMasterPin.getText().toString().trim();
+                        if (value.isEmpty()
+                                || !value.equals(Constants.MASTER_PIN)) {
+                            Utility.toastMsg(getApplicationContext(),
+                                    "Invalid Master Pin.");
+                            Utility.showMessageDialog(LoginActivity.this,
+                                    "Invalid Master Pin.", R.mipmap.wrong);
+                            return;
+                        }
+                        dialog.cancel();
+                        LoginActivity.this.loadSetServiceUrlDialog();
+                    }
+                });
+
+        dialogMasterPin.setNegativeButton("Cancel",
+                new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int whichButton) {
+                        dialog.cancel();
+                    }
+                });
+        dialogMasterPin.show();
+    }
+
+    protected void loadSetServiceUrlDialog() {
+        AlertDialog.Builder dialogSetService = new AlertDialog.Builder(
+                LoginActivity.this);
+        dialogSetService.setTitle("Service Address");
+        final EditText txtUrl = new EditText(LoginActivity.this);
+        String prevServiceUrl = Utility.readFromSharedPref(LoginActivity.this, Constants.SERVICE_URL_PREF_KEY);
+        txtUrl.setText(prevServiceUrl);
+        dialogSetService.setView(txtUrl);
+        dialogSetService.setPositiveButton("Update",
+                new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int whichButton) {
+                        String value = txtUrl.getText().toString().trim();
+                        if (value.isEmpty() || !value.startsWith("http")) {
+                            Utility.toastMsg(getApplicationContext(),
+                                    "Invalid URL entered.");
+                            Utility.showMessageDialog(LoginActivity.this,
+                                    "Invalid URL entered.", R.mipmap.wrong);
+                            return;
+                        }
+                        Utility.saveSharedPref(getApplicationContext(),
+                                Constants.SERVICE_URL_PREF_KEY, value);
+                        Utility.loadPreferences(getApplicationContext());
+                        Utility.toastMsg(
+                                getApplicationContext(),
+                                "Service address updated.\n"
+                                        + Utility.getServiceUrl());
+                        Utility.showMessageDialog(
+                                LoginActivity.this,
+                                "Service address updated.\n"
+                                        + Utility.getServiceUrl(),
+                                R.mipmap.right);
+                    }
+                });
+
+        dialogSetService.setNegativeButton("Cancel",
+                new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int whichButton) {
+                        dialog.cancel();
+                    }
+                });
+        dialogSetService.show();
     }
 }
 

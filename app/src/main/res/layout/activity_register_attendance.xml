@@ -20,43 +20,54 @@
         android:layout_marginBottom="8dp"
         android:visibility="gone" />
 
-    <ScrollView
-        android:id="@+id/register_attendance"
-        android:layout_width="336dp"
-        android:layout_height="463dp"
-        tools:layout_editor_absoluteY="8dp"
-        tools:layout_editor_absoluteX="8dp">
+    <LinearLayout
+        android:id="@+id/register_attendance_form"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_centerInParent="true"
+        android:layout_gravity="center_vertical"
+        android:orientation="vertical">
 
         <LinearLayout
-            android:id="@+id/register_attendance_form"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_gravity="center_vertical"
-            android:orientation="vertical">
+            android:orientation="horizontal">
 
-            <TextView
-                android:id="@+id/tvEmpName"
-                android:layout_width="match_parent"
+            <View
+                android:layout_width="0dp"
+                android:layout_height="0dp"
+                android:layout_weight="1" />
+
+            <DigitalClock
+                android:id="@+id/clock"
+                android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="@string/attendance_user_name"
-                android:textAlignment="center"
-                android:textSize="20sp"
-                android:textStyle="normal"
-                android:layout_marginBottom="20sp"
-                />
-
-            <Button
-                android:id="@+id/btnRegisterAttendance"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:layout_marginTop="20dp"
-                android:text="@string/attendance_register"
-                android:textAllCaps="false"
-                android:textSize="18sp"
-                android:textStyle="normal"
-                />
-
+                android:layout_gravity="right"
+                android:gravity="right"
+                android:visibility="visible" />
         </LinearLayout>
-    </ScrollView>
+
+        <TextView
+            android:id="@+id/tvEmpName"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginBottom="20sp"
+            android:gravity="start"
+            android:text="@string/attendance_user_name"
+            android:textAlignment="textStart"
+            android:textSize="20sp"
+            android:textStyle="normal" />
+
+        <Button
+            android:id="@+id/btnRegisterAttendance"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="20dp"
+            android:text="@string/attendance_register"
+            android:textAllCaps="false"
+            android:textSize="18sp"
+            android:textStyle="normal" />
+
+    </LinearLayout>
 
 </LinearLayout>

@@ -9,6 +9,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ms.app.attendancemgmt.activitiy.RegisterAttendanceActivity;
 import com.ms.app.attendancemgmt.model.Attendance;
 import com.ms.app.attendancemgmt.util.Constants;
+import com.ms.app.attendancemgmt.util.Utility;
 
 import org.apache.commons.lang3.ArrayUtils;
 
@@ -23,8 +24,6 @@ import okhttp3.RequestBody;
 import okhttp3.Response;
 
 public class UpdateAttendance {
-    private static final String HOST_NAME = "http://www.example.com";
-    private static final String REG_ATTENDANCE_ENDPOINT = HOST_NAME + "/register";
     private Attendance attendance;
     private RegisterAttendanceActivity regAttendActivity;
 
@@ -46,28 +45,27 @@ public class UpdateAttendance {
                 ObjectMapper om = new ObjectMapper();
                 try {
                     String json = om.writeValueAsString(attendances[0]);
+                    String finalUrl = Utility.getServiceUrl() + Constants.REGISTER_ATTENDANCE_ENDPOINT;
                     OkHttpClient client = new OkHttpClient();
                     RequestBody body = RequestBody.create(MediaType.parse("application/json"), json);
                     Request request = new Request.Builder()
-                            .url(REG_ATTENDANCE_ENDPOINT)
+                            .url(finalUrl)
                             .addHeader("Content-Type", "application/json")
                             .post(body)
                             .build();
 
 //                    TODO: uncomment following for actual service call
-//                    return client.newCall(request).execute();
-                    Thread.sleep(1000);
+                    return client.newCall(request).execute();
+//                    Thread.sleep(1000);
 //                    TODO: remove following after integration with actual service
-                    return new Response.Builder()
-                            .message("Registration complete for " + attendances[0].toString())
-                            .request(request)
-                            .protocol(Protocol.HTTP_1_0)
-                            .code(HttpURLConnection.HTTP_OK)
-                            .build();
-                } catch (IOException e) {
-                    Log.e(Constants.LOG_TAG, "Exception while preparing json. ", e);
-                    return null;
-                } catch (InterruptedException e) {
+//                    return new Response.Builder()
+//                            .message("Registration complete for " + attendances[0].toString())
+//                            .request(request)
+//                            .protocol(Protocol.HTTP_1_0)
+//                            .code(HttpURLConnection.HTTP_OK)
+//                            .build();
+                } catch (Exception e) {
+                    Log.e(Constants.LOG_TAG, "Exception while registering attendance. ", e);
                 }
             }
             return null;
@@ -89,7 +87,7 @@ public class UpdateAttendance {
         protected void onPostExecute(Response response) {
             super.onPostExecute(response);
             regAttendActivity.showProgressBar(false);
-            regAttendActivity.handleRegisterAttendanceResponse(response);
+            regAttendActivity.handleRegisterAttendanceResponse(response, attendance);
         }
 
         @Override
