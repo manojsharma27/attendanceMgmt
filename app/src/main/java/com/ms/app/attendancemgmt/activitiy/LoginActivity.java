@@ -293,7 +293,7 @@ public class LoginActivity extends AppCompatActivity {
                 LoginActivity.this);
         dialogMasterPin.setTitle("Master Pin");
         final EditText txtMasterPin = new EditText(LoginActivity.this);
-        txtMasterPin.setInputType(InputType.TYPE_CLASS_NUMBER);
+        txtMasterPin.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_VARIATION_PASSWORD);
 
         dialogMasterPin.setView(txtMasterPin);
         dialogMasterPin.setPositiveButton("Next",
