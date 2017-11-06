@@ -12,39 +12,32 @@
 
     <application
         android:allowBackup="true"
-        android:icon="@mipmap/get_location"
+        android:icon="@mipmap/gps_icon"
         android:label="@string/app_name"
-        android:roundIcon="@mipmap/ic_launcher_round"
+        android:roundIcon="@mipmap/gps_icon"
         android:supportsRtl="true"
         android:theme="@style/AppTheme">
         <activity
             android:name=".activitiy.LoginActivity"
             android:label="@string/app_name">
-            <!--<intent-filter>-->
-                <!--<action android:name="android.intent.action.MAIN" />-->
-
-                <!--<category android:name="android.intent.category.LAUNCHER" />-->
-            <!--</intent-filter>-->
-        </activity>
-        <activity android:name=".activitiy.RegisterAttendanceActivity" />
-        <activity android:name=".location.MyLocationUsingLocationAPI" />
-        <activity android:name=".TempActivity">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <!--<receiver android:name=".service.RepeatLocUpdateService" />-->
-        <!--<service android:name=".service.ServiceMgr" android:process=":servicemgr" />-->
-        <receiver
-            android:name=".anotherservice.MyAlarmReceiver"
-            android:process=":remote" >
-        </receiver>
+        <activity android:name=".activitiy.RegisterAttendanceActivity" />
+        <activity android:name=".location.MyLocationUsingLocationAPI" />
+        <!--<activity android:name=".TempActivity">-->
+        <!--</activity>-->
+        <!--<receiver-->
+            <!--android:name=".anotherservice.MyAlarmReceiver"-->
+            <!--android:process=":remote" >-->
+        <!--</receiver>-->
 
-        <service
-            android:name=".anotherservice.MyTestService"
-            android:exported="false" />
+        <!--<service-->
+            <!--android:name=".anotherservice.MyTestService"-->
+            <!--android:exported="false" />-->
     </application>
 
 </manifest>

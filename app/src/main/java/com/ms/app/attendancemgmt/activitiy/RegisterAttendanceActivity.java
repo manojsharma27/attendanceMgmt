@@ -501,22 +501,12 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
             case R.id.mitemLogout:
                 finish();
                 return true;
-            case R.id.mitemStartAutoUpdates:
-//                startAutoRegistration();
-                return true;
-            case R.id.mitemStopAutoUpdates:
-//                stopAutoRegistration();
-                return true;
+//            case R.id.mitemStartAutoUpdates:
+//                return true;
+//            case R.id.mitemStopAutoUpdates:
+//                return true;
         }
         return super.onOptionsItemSelected(item);
     }
 
-    private class AutoRegisterService extends Service {
-
-        @Nullable
-        @Override
-        public IBinder onBind(Intent intent) {
-            return null;
-        }
-    }
 }

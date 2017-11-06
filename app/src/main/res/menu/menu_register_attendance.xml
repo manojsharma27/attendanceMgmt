@@ -8,18 +8,18 @@
         android:visible="true">
     </item>
 
-    <item
-        android:id="@+id/mitemStartAutoUpdates"
-        android:enabled="true"
-        android:title="Auto Register"
-        android:visible="true">
-    </item>
+    <!--<item-->
+        <!--android:id="@+id/mitemStartAutoUpdates"-->
+        <!--android:enabled="true"-->
+        <!--android:title="Auto Register"-->
+        <!--android:visible="true">-->
+    <!--</item>-->
 
-    <item
-        android:id="@+id/mitemStopAutoUpdates"
-        android:enabled="true"
-        android:title="Stop Registering"
-        android:visible="true">
-    </item>
+    <!--<item-->
+        <!--android:id="@+id/mitemStopAutoUpdates"-->
+        <!--android:enabled="true"-->
+        <!--android:title="Stop Registering"-->
+        <!--android:visible="true">-->
+    <!--</item>-->
 
 </menu>
