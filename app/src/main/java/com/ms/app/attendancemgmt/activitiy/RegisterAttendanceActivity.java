@@ -3,6 +3,7 @@ package com.ms.app.attendancemgmt.activitiy;
 import android.Manifest;
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.Service;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -12,8 +13,10 @@ import android.location.Address;
 import android.location.Geocoder;
 import android.location.Location;
 import android.os.Bundle;
+import android.os.IBinder;
 import android.provider.Settings;
 import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.telephony.TelephonyManager;
@@ -61,7 +64,7 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
         PermissionUtils.PermissionResultCallback {
     private static final int LOCATION_PERMISSION_REQUEST_CODE = 191;
     private static final int PHONE_STATE_PERMISSION_REQUEST_CODE = 192;
-    public static final String MSG_OK = "OK";
+    private static final String MSG_OK = "OK";
     private AlertDialog alertDialog;
     private Context context;
     private TelephonyManager telephonyManager;
@@ -98,6 +101,7 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
         context = RegisterAttendanceActivity.this;
         String empName = this.getIntent().getExtras().getString(Constants.EMP_NAME);
         final String empId = this.getIntent().getExtras().getString(Constants.EMP_ID);
+        Utility.saveSharedPref(getApplicationContext(), Constants.EMP_ID, empId);
 //        final Employee employee = Utility.searchEmployeeFromPin(empName);
         if (StringUtils.isEmpty(empId)) {
             showEmpNotFoundDialog();
@@ -108,7 +112,6 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
         tvEmpty = findViewById(R.id.tvEmpty);
         TextView tvEmpName = findViewById(R.id.tvEmpName);
         tvEmpName.setText(String.format(Constants.HELLO_MSG, empName));
-
         pbRegAttend = findViewById(R.id.pb_register_attendance);
         pbRegAttend.setVisibility(View.GONE);
 
@@ -118,17 +121,7 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
         rlRegAttend.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                getLocation();
-                if (mLastLocation != null) {
-                    latitude = mLastLocation.getLatitude();
-                    longitude = mLastLocation.getLongitude();
-                    populateAddress();
-                } else {
-                    Utility.toastMsg(context, "Couldn't get the location. Make sure location is enabled on the device");
-                    return;
-                }
-                checkAndRequestDeviceIdPermission();
-                registerAttendance(empId);
+                doRegistration(empId);
             }
         });
 
@@ -136,6 +129,20 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
         if (checkPlayServices()) {
             buildGoogleApiClient();
         }
+    }
+
+    private void doRegistration(String empId) {
+        getLocation();
+        if (mLastLocation != null) {
+            latitude = mLastLocation.getLatitude();
+            longitude = mLastLocation.getLongitude();
+            populateAddress();
+        } else {
+            Utility.toastMsg(context, "Couldn't get the location. Make sure location is enabled on the device");
+            return;
+        }
+        checkAndRequestDeviceIdPermission();
+        registerAttendance(empId);
     }
 
     private void setupPermissionUtils() {
@@ -211,9 +218,7 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
                 tvAddress.setVisibility(View.VISIBLE);
                 tvEmpty.setVisibility(View.GONE);
             }
-
         }
-
     }
 
     protected synchronized void buildGoogleApiClient() {
@@ -449,46 +454,12 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
         alertDialog.show();
     }
 
-//    @Override
-//    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
-//        // check for requestCode after permission is granted
-//        if (!ArrayUtils.isEmpty(grantResults) && PackageManager.PERMISSION_GRANTED == grantResults[0]) {
-//            switch (requestCode) {
-//                case LOCATION_PERMISSION_REQUEST_CODE:
-//
-//                    break;
-//                case PHONE_STATE_PERMISSION_REQUEST_CODE:
-//                    populateDeviceId();
-//                    break;
-//            }
-//        }
-//    }
-
     @Override
     protected void onResume() {
         super.onResume();
         checkPlayServices();
         getLocation();
     }
-
-//    private class CustomLocationListener implements LocationListener {
-//
-//        @Override
-//        public void onLocationChanged(Location loc) {
-//        }
-//
-//        @Override
-//        public void onStatusChanged(String s, int i, Bundle bundle) {
-//        }
-//
-//        @Override
-//        public void onProviderEnabled(String s) {
-//        }
-//
-//        @Override
-//        public void onProviderDisabled(String s) {
-//        }
-//    }
 
     // Code for fetching deviceId
 
@@ -530,7 +501,22 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
             case R.id.mitemLogout:
                 finish();
                 return true;
+            case R.id.mitemStartAutoUpdates:
+//                startAutoRegistration();
+                return true;
+            case R.id.mitemStopAutoUpdates:
+//                stopAutoRegistration();
+                return true;
         }
         return super.onOptionsItemSelected(item);
+    }
+
+    private class AutoRegisterService extends Service {
+
+        @Nullable
+        @Override
+        public IBinder onBind(Intent intent) {
+            return null;
+        }
     }
 }
