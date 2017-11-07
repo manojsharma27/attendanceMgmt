@@ -42,6 +42,8 @@ import com.google.android.gms.location.LocationSettingsRequest;
 import com.google.android.gms.location.LocationSettingsResult;
 import com.google.android.gms.location.LocationSettingsStates;
 import com.google.android.gms.location.LocationSettingsStatusCodes;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.Task;
 import com.ms.app.attendancemgmt.R;
 import com.ms.app.attendancemgmt.location.LocationUtil.PermissionUtils;
 import com.ms.app.attendancemgmt.model.Attendance;
@@ -129,6 +131,193 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
         if (checkPlayServices()) {
             buildGoogleApiClient();
         }
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        final LocationSettingsStates states = LocationSettingsStates.fromIntent(data);
+        switch (requestCode) {
+            case REQUEST_CHECK_SETTINGS:
+                switch (resultCode) {
+                    case Activity.RESULT_OK:
+                        // All required changes were successfully made
+                        getLocation();
+                        break;
+                    case Activity.RESULT_CANCELED:
+                        // The user was asked to change settings, but chose not to
+                        break;
+                    default:
+                        break;
+                }
+                break;
+        }
+    }
+
+    @Override
+    public void onConnectionFailed(ConnectionResult result) {
+        Log.i(Constants.LOG_TAG, "Connection failed: ConnectionResult.getErrorCode() = "
+                + result.getErrorCode());
+    }
+
+    @Override
+    public void onConnected(Bundle arg0) {
+        // Once connected with google api, get the location
+        getLocation();
+    }
+
+    @Override
+    public void onConnectionSuspended(int arg0) {
+        mGoogleApiClient.connect();
+    }
+
+
+    // Permission check functions
+
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
+                                           @NonNull int[] grantResults) {
+        // redirects to utils
+        permissionUtils.onRequestPermissionsResult(requestCode, permissions, grantResults);
+
+    }
+
+    @Override
+    public void PermissionGranted(int request_code) {
+        Log.i("PERMISSION", "GRANTED");
+        isPermissionGranted = true;
+    }
+
+    @Override
+    public void PartialPermissionGranted(int request_code, ArrayList<String> granted_permissions) {
+        Log.i("PERMISSION PARTIALLY", "GRANTED");
+    }
+
+    @Override
+    public void PermissionDenied(int request_code) {
+        Log.i("PERMISSION", "DENIED");
+    }
+
+    @Override
+    public void NeverAskAgain(int request_code) {
+        Log.i("PERMISSION", "NEVER ASK AGAIN");
+    }
+
+    @Override
+    public void finish() {
+        super.finish();
+    }
+
+    @Override
+    protected void onDestroy() {
+        mGoogleApiClient.disconnect();
+        super.onDestroy();
+        if (null != alertDialog)
+            alertDialog.dismiss();
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        checkPlayServices();
+        getLocation();
+    }
+
+    @Override
+    public boolean onCreateOptionsMenu(Menu menu) {
+        getMenuInflater().inflate(R.menu.menu_register_attendance, menu);
+        return true;
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+            case R.id.mitemLogout:
+                finish();
+                return true;
+//            case R.id.mitemStartAutoUpdates:
+//                return true;
+//            case R.id.mitemStopAutoUpdates:
+//                return true;
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
+    private void registerAttendance(String empId) {
+        Attendance attendance = new Attendance(empId);
+        attendance.setTime(new Date());
+        // TODO : get uniqueId for app installation
+        attendance.setLat(latitude);
+        attendance.setLon(longitude);
+        if (null == telephonyManager) {
+            checkAndRequestDeviceIdPermission();
+            populateDeviceId();
+        }
+        attendance.setDevId(deviceId);
+
+        UpdateAttendance updateAttendance = new UpdateAttendance(this, attendance);
+        updateAttendance.register();
+    }
+
+    public void handleRegisterAttendanceResponse(Response response, Attendance attendance) {
+        boolean isSuccess = (null != response && response.message().equals(MSG_OK));
+        String time = Utility.getTime();
+        String successMsg = String.format("Attendance registered at %s. \n Loc: (%s,%s)", time, attendance.getLon(), attendance.getLat());
+        String failedMsg = "Registration failed.\nUnable to connect to service.";
+        Utility.showMessageDialog(RegisterAttendanceActivity.this, isSuccess ? successMsg : failedMsg, isSuccess ? R.mipmap.right : R.mipmap.wrong);
+        Utility.toastMsg(context, isSuccess ? successMsg : failedMsg);
+    }
+
+
+    private void showGpsNotEnabledDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(context);
+        builder.setTitle("Alert:");
+        builder.setMessage("GPS is not enabled. Would you like to enable it?");
+        builder.setCancelable(false);
+        builder.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialogInterface, int i) {
+                Intent locationIntent = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
+                context.startActivity(locationIntent);
+            }
+        });
+        builder.setNegativeButton("No", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialogInterface, int i) {
+                dialogInterface.cancel();
+                Utility.toastMsg(context, "Attendance not registered.");
+            }
+        });
+        alertDialog = builder.create();
+        alertDialog.show();
+    }
+
+    // Code for fetching deviceId
+
+    private void configureTelephonyManager() {
+        if (null == telephonyManager) {
+            telephonyManager = (TelephonyManager) getSystemService(TELEPHONY_SERVICE);
+        }
+    }
+
+    private void populateDeviceId() {
+        configureTelephonyManager();
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED) {
+            deviceId = telephonyManager.getDeviceId();
+        }
+
+        if (null == deviceId || deviceId.contains("000000")) {
+            deviceId = Settings.Secure.getString(getApplicationContext().getContentResolver(), Settings.Secure.ANDROID_ID);
+        }
+        Utility.toastMsg(this, "DeviceId: " + deviceId);
+    }
+
+    private boolean checkAndRequestDeviceIdPermission() {
+        if (ActivityCompat.checkSelfPermission(context, Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions((Activity) context, new String[]{Manifest.permission.READ_PHONE_STATE}, PHONE_STATE_PERMISSION_REQUEST_CODE);
+            return false;
+        }
+        return true;
     }
 
     private void doRegistration(String empId) {
@@ -296,78 +485,6 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
         return true;
     }
 
-    @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        final LocationSettingsStates states = LocationSettingsStates.fromIntent(data);
-        switch (requestCode) {
-            case REQUEST_CHECK_SETTINGS:
-                switch (resultCode) {
-                    case Activity.RESULT_OK:
-                        // All required changes were successfully made
-                        getLocation();
-                        break;
-                    case Activity.RESULT_CANCELED:
-                        // The user was asked to change settings, but chose not to
-                        break;
-                    default:
-                        break;
-                }
-                break;
-        }
-    }
-
-    @Override
-    public void onConnectionFailed(ConnectionResult result) {
-        Log.i(Constants.LOG_TAG, "Connection failed: ConnectionResult.getErrorCode() = "
-                + result.getErrorCode());
-    }
-
-    @Override
-    public void onConnected(Bundle arg0) {
-
-        // Once connected with google api, get the location
-        getLocation();
-    }
-
-    @Override
-    public void onConnectionSuspended(int arg0) {
-        mGoogleApiClient.connect();
-    }
-
-
-    // Permission check functions
-
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
-                                           @NonNull int[] grantResults) {
-        // redirects to utils
-        permissionUtils.onRequestPermissionsResult(requestCode, permissions, grantResults);
-
-    }
-
-    @Override
-    public void PermissionGranted(int request_code) {
-        Log.i("PERMISSION", "GRANTED");
-        isPermissionGranted = true;
-    }
-
-    @Override
-    public void PartialPermissionGranted(int request_code, ArrayList<String> granted_permissions) {
-        Log.i("PERMISSION PARTIALLY", "GRANTED");
-    }
-
-    @Override
-    public void PermissionDenied(int request_code) {
-        Log.i("PERMISSION", "DENIED");
-    }
-
-    @Override
-    public void NeverAskAgain(int request_code) {
-        Log.i("PERMISSION", "NEVER ASK AGAIN");
-    }
-
-
     private void showEmpNotFoundDialog() {
         AlertDialog.Builder builder = new AlertDialog.Builder(this);
         builder.setTitle("Alert:");
@@ -391,122 +508,6 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
     public void showProgressBar(boolean show) {
         pbRegAttend.setVisibility(show ? View.VISIBLE : View.GONE);
         reg_attend_form.setVisibility(show ? View.GONE : View.VISIBLE);
-    }
-
-    @Override
-    public void finish() {
-        super.finish();
-    }
-
-    @Override
-    protected void onDestroy() {
-        super.onDestroy();
-        if (null != alertDialog)
-            alertDialog.dismiss();
-    }
-
-    private void registerAttendance(String empId) {
-        Attendance attendance = new Attendance(empId);
-        attendance.setTime(new Date());
-        // TODO : get uniqueId for app installation
-        attendance.setLat(latitude);
-        attendance.setLon(longitude);
-        if (null == telephonyManager) {
-            checkAndRequestDeviceIdPermission();
-            populateDeviceId();
-        }
-        attendance.setDevId(deviceId);
-
-        UpdateAttendance updateAttendance = new UpdateAttendance(this, attendance);
-        updateAttendance.register();
-    }
-
-    public void handleRegisterAttendanceResponse(Response response, Attendance attendance) {
-        boolean isSuccess = (null != response && response.message().equals(MSG_OK));
-        String time = Utility.getTime();
-        String successMsg = String.format("Attendance registered at %s. \n Loc: (%s,%s)", time, attendance.getLon(), attendance.getLat());
-        String failedMsg = "Registration failed.\nUnable to connect to service.";
-        Utility.showMessageDialog(RegisterAttendanceActivity.this, isSuccess ? successMsg : failedMsg, isSuccess ? R.mipmap.right : R.mipmap.wrong);
-        Utility.toastMsg(context, isSuccess ? successMsg : failedMsg);
-    }
-
-
-    private void showGpsNotEnabledDialog() {
-        AlertDialog.Builder builder = new AlertDialog.Builder(context);
-        builder.setTitle("Alert:");
-        builder.setMessage("GPS is not enabled. Would you like to enable it?");
-        builder.setCancelable(false);
-        builder.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialogInterface, int i) {
-                Intent locationIntent = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
-                context.startActivity(locationIntent);
-            }
-        });
-        builder.setNegativeButton("No", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialogInterface, int i) {
-                dialogInterface.cancel();
-                Utility.toastMsg(context, "Attendance not registered.");
-            }
-        });
-        alertDialog = builder.create();
-        alertDialog.show();
-    }
-
-    @Override
-    protected void onResume() {
-        super.onResume();
-        checkPlayServices();
-        getLocation();
-    }
-
-    // Code for fetching deviceId
-
-    private void configureTelephonyManager() {
-        if (null == telephonyManager) {
-            telephonyManager = (TelephonyManager) getSystemService(TELEPHONY_SERVICE);
-        }
-    }
-
-    private void populateDeviceId() {
-        configureTelephonyManager();
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED) {
-            deviceId = telephonyManager.getDeviceId();
-        }
-
-        if (null == deviceId || deviceId.contains("000000")) {
-            deviceId = Settings.Secure.getString(getApplicationContext().getContentResolver(), Settings.Secure.ANDROID_ID);
-        }
-        Utility.toastMsg(this, "DeviceId: " + deviceId);
-    }
-
-    private boolean checkAndRequestDeviceIdPermission() {
-        if (ActivityCompat.checkSelfPermission(context, Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions((Activity) context, new String[]{Manifest.permission.READ_PHONE_STATE}, PHONE_STATE_PERMISSION_REQUEST_CODE);
-            return false;
-        }
-        return true;
-    }
-
-    @Override
-    public boolean onCreateOptionsMenu(Menu menu) {
-        getMenuInflater().inflate(R.menu.menu_register_attendance, menu);
-        return true;
-    }
-
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        switch (item.getItemId()) {
-            case R.id.mitemLogout:
-                finish();
-                return true;
-//            case R.id.mitemStartAutoUpdates:
-//                return true;
-//            case R.id.mitemStopAutoUpdates:
-//                return true;
-        }
-        return super.onOptionsItemSelected(item);
     }
 
 }
