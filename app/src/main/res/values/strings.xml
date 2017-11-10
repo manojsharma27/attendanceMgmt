@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">My Attendance</string>
+    <string name="app_name">PunchMe</string>
 
     <!-- Strings related to login -->
     <string name="prompt_pin">PIN</string>
@@ -15,4 +15,5 @@
     <string name="setting_service_url">Service Url</string>
     <string name="button_change_setting">Change</string>
     <string name="quotedesc">Welcome! Where should we deliver to?</string>
+    <string name="txtPunchIn">Punch In</string>
 </resources>

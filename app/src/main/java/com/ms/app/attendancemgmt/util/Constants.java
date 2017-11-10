@@ -7,15 +7,32 @@ import org.apache.commons.lang3.StringUtils;
  */
 public class Constants {
     public static final String EMP_ID = "emp_id";
+    public static final String DEVICE_ID = "dev_id";
     public static final String EMP_NAME = "emp_name";
     public static final String HELLO_MSG = "Welcome, %s";
-    public static final String LOG_TAG = "AttendMgmt_tag";
+    public static final String TAG = "AttendMgmt_tag";
     public static final String SHARED_PREF_NAME = "AttendMgmtSharedPref";
     public static final String SERVICE_URL_PREF_KEY = "service_url";
     public static final String MASTER_PIN = "9009";
     public static final String APP_TITLE = "Attendance Mgmt";
+    public static final String MSG_OK = "OK";
+    public static final String DATE_FORMAT = "yyyy-MM-dd'T'HH:mm:ss";
+    public static final String SET_NEXT_ALARM = "setNextLocationUpdateAlarm";
+    public static final String EXTRA_LATITUDE = "extra_latitude";
+    public static final String EXTRA_LONGITUDE = "extra_longitude";
+    public static final String LAST_LATITUDE = "lastLatitude";
+    public static final String LAST_LONGITUDE = "lastLongitude";
+    public static final String LAST_CAPTURED_TIME = "lastCapturedTime";
+    public static final String EXTRA_FETCH_TIME = "extra_fetch_time";
 
-//    public static final String TEST_SERVICE_URL = "http://223.196.89.105:8004";
+    public static final String PUNCH_STATUS = "punchStatus";
+    public static final String PUNCHED_IN = "punchedIn";
+    public static final String PUNCHED_OUT = "punchedOut";
+
+    //    public static final String TEST_SERVICE_URL = "http://223.196.89.105:8004";
     public static final String AUTHENTICATE_PIN_ENDPOINT = "/verifypin?p=%s";
     public static final String REGISTER_ATTENDANCE_ENDPOINT = "/registerAttendance";
+
+    public static final long FASTEST_LOCATION_INTERVAL = 30 * 1000;
+    public static final long LOCATION_INTERVAL = 60 * 1000;
 }

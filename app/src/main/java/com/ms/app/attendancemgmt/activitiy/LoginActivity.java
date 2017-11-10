@@ -4,11 +4,16 @@ import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.annotation.TargetApi;
 import android.app.AlertDialog;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
+import android.preference.PreferenceManager;
+import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
 import android.text.InputType;
 import android.text.TextUtils;
@@ -36,6 +41,7 @@ import java.io.IOException;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
+import okhttp3.internal.Util;
 
 /**
  * A login screen that offers login via email/password.
@@ -82,7 +88,6 @@ public class LoginActivity extends AppCompatActivity {
 
         mLoginFormView = findViewById(R.id.full_login_form);
         mProgressView = findViewById(R.id.login_progress);
-        Utility.loadPreferences(getApplicationContext());
     }
 
     /**
@@ -119,15 +124,18 @@ public class LoginActivity extends AppCompatActivity {
             // Show a progress spinner, and kick off a background task to
             // perform the user login attempt.
             showProgress(true);
-            if (StringUtils.isEmpty(Utility.getServiceUrl())) {
+            if (StringUtils.isEmpty(Utility.getServiceUrl(getApplicationContext()))) {
                 showProgress(false);
                 Utility.showMessageDialog(LoginActivity.this, "Service url not configured!", R.mipmap.wrong);
                 txtPin.setError(getString(R.string.error_invalid_pin));
                 txtPin.requestFocus();
                 return;
             }
-            mAuthTask = new UserLoginTask(pin);
-            mAuthTask.execute((Void) null);
+
+            if (checkInternetConnected()) {
+                mAuthTask = new UserLoginTask(pin);
+                mAuthTask.execute((Void) null);
+            }
         }
     }
 
@@ -186,10 +194,14 @@ public class LoginActivity extends AppCompatActivity {
 
         @Override
         protected Boolean doInBackground(Void... params) {
+            //TODO : remove me for sure *********************************************************************************
+            if (true)
+                return testDoInBkg();
+
             Response response = null;
             try {
                 OkHttpClient client = new OkHttpClient();
-                String finalUrl = Utility.getServiceUrl() + String.format(Constants.AUTHENTICATE_PIN_ENDPOINT, pin);
+                String finalUrl = Utility.getServiceUrl(getApplicationContext()) + String.format(Constants.AUTHENTICATE_PIN_ENDPOINT, pin);
                 Request request = new Request.Builder()
                         .url(finalUrl)
                         .addHeader("Content-Type", "application/json")
@@ -197,29 +209,47 @@ public class LoginActivity extends AppCompatActivity {
                         .build();
                 response = client.newCall(request).execute();
             } catch (Exception e) {
-                Log.e(Constants.LOG_TAG, "Exception while authenticating pin. ", e);
+                Log.e(Constants.TAG, "Exception while authenticating pin. ", e);
             }
             if (null == response || !response.isSuccessful()) {
                 errorMsg = "Failed to connect to internet.";
                 return false;
             }
 
+            //TODO : replace parsing logic with actual one for sure *********************************************************************************
 //            String respStr = "{\"Status\":\"Success\",\"Message\":\"David Patterson\"}";
             ObjectMapper objectMapper = new ObjectMapper();
             try {
                 String respStr = response.body().string();
                 JsonNode respNode = objectMapper.readTree(respStr);
-                JsonNode statusNode = respNode.get("Status");
+                JsonNode statusNode = respNode.get("status");
                 if (null != statusNode && statusNode.asText().equals("Success")) {
-                    empName = respNode.get("Message").asText();
-                    empId = respNode.get("EmpId").asText();
+                    empName = respNode.get("name").asText();
+                    empId = respNode.get("empid").asText();
+                    PreferenceManager.getDefaultSharedPreferences(getApplicationContext()).edit().putString(Constants.EMP_ID, empId).apply();
                     return true;
                 }
             } catch (IOException e) {
-                Log.e(Constants.LOG_TAG, "Exception while parsing response :" + response.body(), e);
+                Log.e(Constants.TAG, "Exception while parsing response :" + response.body(), e);
             }
-//            return Utility.isPinValid(pin);
             errorMsg = "Pin not registered.";
+            return false;
+        }
+
+        @Nullable
+        private Boolean testDoInBkg() {
+            try {
+                Thread.sleep(1000);
+                empId = "9898";
+                empName = "manoj";
+                PreferenceManager.getDefaultSharedPreferences(getApplicationContext()).edit().putString(Constants.EMP_ID, empId).apply();
+                return true;
+            } catch (InterruptedException e) {
+            }
+
+            if (true) {
+                return false;
+            }
             return false;
         }
 
@@ -267,6 +297,20 @@ public class LoginActivity extends AppCompatActivity {
         }
         return super.onOptionsItemSelected(item);
     }
+
+    private boolean checkInternetConnected() {
+        ConnectivityManager connectivityManager
+                = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo activeNetworkInfo = connectivityManager.getActiveNetworkInfo();
+
+        if (null == activeNetworkInfo || !activeNetworkInfo.isConnected()) {
+            Utility.showMessageDialog(LoginActivity.this, "No Internet Connection !", R.mipmap.img_sad_smiley);
+
+            return false;
+        }
+        return Utility.ableToAccessInternet(2 * 1000);
+    }
+
 
     private void loadGetMasterPinDialog() {
         AlertDialog.Builder dialogMasterPin = new AlertDialog.Builder(
@@ -323,15 +367,14 @@ public class LoginActivity extends AppCompatActivity {
                         }
                         Utility.saveSharedPref(getApplicationContext(),
                                 Constants.SERVICE_URL_PREF_KEY, value);
-                        Utility.loadPreferences(getApplicationContext());
                         Utility.toastMsg(
                                 getApplicationContext(),
                                 "Service address updated.\n"
-                                        + Utility.getServiceUrl());
+                                        + Utility.getServiceUrl(getApplicationContext()));
                         Utility.showMessageDialog(
                                 LoginActivity.this,
                                 "Service address updated.\n"
-                                        + Utility.getServiceUrl(),
+                                        + Utility.getServiceUrl(getApplicationContext()),
                                 R.mipmap.right);
                     }
                 });

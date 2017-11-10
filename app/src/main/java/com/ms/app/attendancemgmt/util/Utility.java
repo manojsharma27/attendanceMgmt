@@ -6,10 +6,12 @@ import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.SharedPreferences;
+import android.preference.PreferenceManager;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.widget.ImageView;
+import android.widget.ScrollView;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -19,15 +21,22 @@ import com.ms.app.attendancemgmt.model.Employee;
 
 import org.apache.commons.lang3.StringUtils;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.TimeZone;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+
+import static com.ms.app.attendancemgmt.util.Constants.DATE_FORMAT;
 
 public class Utility {
-
-    public static final String DATE_FORMAT = "yyyy-MM-dd'T'HH:mm:ss";
-    private static String SERVICE_URL = StringUtils.EMPTY;
 
     public static String formatDate(String date) {
         SimpleDateFormat dateFormat = new SimpleDateFormat(DATE_FORMAT);
@@ -67,6 +76,10 @@ public class Utility {
         SharedPreferences.Editor editor = prefs.edit();
         editor.putString(key, value);
         editor.apply();
+
+        if (key.equals(Constants.SERVICE_URL_PREF_KEY)) {
+            PreferenceManager.getDefaultSharedPreferences(context).edit().putString(Constants.SERVICE_URL_PREF_KEY, value).apply();
+        }
     }
 
     public static String readFromSharedPref(Context context, String key) {
@@ -101,21 +114,68 @@ public class Utility {
                     });
             builder.show();
         } catch (Exception e) {
-            Log.e(Constants.LOG_TAG, "display dialog error.");
+            Log.e(Constants.TAG, "display dialog error.");
         }
     }
 
-    public static void loadPreferences(Context context) {
-        SERVICE_URL = readFromSharedPref(context, Constants.SERVICE_URL_PREF_KEY);
+    public static void showMessageDialog(Activity activity, String msg) {
+        try {
+            AlertDialog.Builder builder = new AlertDialog.Builder(activity);
+
+            LayoutInflater inflater = (LayoutInflater) activity
+                    .getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+            View layout_Message_dialog = inflater.inflate(
+                    R.layout.dialog_message, null);
+            builder.setView(layout_Message_dialog);
+            builder.setTitle(Constants.APP_TITLE);
+            TextView text = layout_Message_dialog.findViewById(R.id.tvDialogMessage);
+            text.setVerticalScrollBarEnabled(true);
+            text.setHorizontalScrollBarEnabled(true);
+            text.setText(msg);
+            ImageView image = layout_Message_dialog.findViewById(R.id.imgMessage);
+            image.setVisibility(View.GONE);
+            builder.setNeutralButton("Ok",
+                    new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            dialog.dismiss();
+                        }
+                    });
+            builder.show();
+        } catch (Exception e) {
+            Log.e(Constants.TAG, "display dialog error.");
+        }
     }
 
-    public static String getServiceUrl() {
-        return SERVICE_URL;
+    public static String getServiceUrl(Context context) {
+        return PreferenceManager.getDefaultSharedPreferences(context).getString(Constants.SERVICE_URL_PREF_KEY, null);
     }
 
     public static String getTime() {
         Calendar cal = Calendar.getInstance();
         String ampm = cal.get(Calendar.AM_PM) == Calendar.AM ? "AM" : "PM";
         return String.format("%s:%s %s", cal.get(Calendar.HOUR), cal.get(Calendar.MINUTE), ampm);
+    }
+
+    public static boolean ableToAccessInternet(int timeOutInMillis) {
+        InetAddress inetAddress = null;
+        try {
+            Future<InetAddress> future = Executors.newSingleThreadExecutor().submit(new Callable<InetAddress>() {
+                @Override
+                public InetAddress call() {
+                    try {
+                        return InetAddress.getByName("google.com");
+                    } catch (UnknownHostException e) {
+                        return null;
+                    }
+                }
+            });
+            inetAddress = future.get(timeOutInMillis, TimeUnit.MILLISECONDS);
+            future.cancel(true);
+        } catch (InterruptedException e) {
+        } catch (ExecutionException e) {
+        } catch (TimeoutException e) {
+        }
+        return inetAddress != null && !inetAddress.equals("");
     }
 }

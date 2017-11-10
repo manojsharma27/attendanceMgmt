@@ -2,8 +2,9 @@ package com.ms.app.attendancemgmt.activitiy;
 
 import android.Manifest;
 import android.app.Activity;
+import android.app.AlarmManager;
 import android.app.AlertDialog;
-import android.app.Service;
+import android.app.PendingIntent;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
@@ -13,10 +14,9 @@ import android.location.Address;
 import android.location.Geocoder;
 import android.location.Location;
 import android.os.Bundle;
-import android.os.IBinder;
+import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.support.annotation.NonNull;
-import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.telephony.TelephonyManager;
@@ -42,17 +42,22 @@ import com.google.android.gms.location.LocationSettingsRequest;
 import com.google.android.gms.location.LocationSettingsResult;
 import com.google.android.gms.location.LocationSettingsStates;
 import com.google.android.gms.location.LocationSettingsStatusCodes;
-import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.Task;
 import com.ms.app.attendancemgmt.R;
+import com.ms.app.attendancemgmt.anotherservice.MyAlarmReceiver;
 import com.ms.app.attendancemgmt.location.LocationUtil.PermissionUtils;
 import com.ms.app.attendancemgmt.model.Attendance;
 import com.ms.app.attendancemgmt.register.UpdateAttendance;
+import com.ms.app.attendancemgmt.service.BackgroundTaskHandler;
+import com.ms.app.attendancemgmt.service.FileHandler;
+import com.ms.app.attendancemgmt.service.LocationMonitoringService;
+import com.ms.app.attendancemgmt.service.UpdateLocationToServerBroadcastReceiver;
 import com.ms.app.attendancemgmt.util.Constants;
 import com.ms.app.attendancemgmt.util.Utility;
 
+import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
 
+import java.io.File;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.Date;
@@ -61,25 +66,29 @@ import java.util.Locale;
 
 import okhttp3.Response;
 
+import static android.app.PendingIntent.FLAG_ONE_SHOT;
+import static com.ms.app.attendancemgmt.util.Constants.MSG_OK;
+
 public class RegisterAttendanceActivity extends AppCompatActivity implements GoogleApiClient.ConnectionCallbacks,
         GoogleApiClient.OnConnectionFailedListener, ActivityCompat.OnRequestPermissionsResultCallback,
         PermissionUtils.PermissionResultCallback {
     private static final int LOCATION_PERMISSION_REQUEST_CODE = 191;
     private static final int PHONE_STATE_PERMISSION_REQUEST_CODE = 192;
-    private static final String MSG_OK = "OK";
+
     private AlertDialog alertDialog;
     private Context context;
-    private TelephonyManager telephonyManager;
     private String deviceId;
     private ProgressBar pbRegAttend;
     private View reg_attend_form;
-
-    private TextView tvAddress;
-    private TextView tvEmpty;
+    private RelativeLayout rlRegAttend;
+    private TextView tvTodoMsg;
+    private TextView tvRegAttendance;
 
     private final static int PLAY_SERVICES_REQUEST = 1000;
     private final static int REQUEST_CHECK_SETTINGS = 2000;
 
+    private BackgroundTaskHandler backgroundTaskHandler;
+    private TelephonyManager telephonyManager;
     private Location mLastLocation;
 
     // Google client to interact with Google API
@@ -110,8 +119,9 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
             return;
         }
 
-        tvAddress = findViewById(R.id.tvAddress);
-        tvEmpty = findViewById(R.id.tvEmpty);
+        backgroundTaskHandler = new BackgroundTaskHandler(context);
+        tvTodoMsg = findViewById(R.id.tvTodoMsg);
+        tvRegAttendance = findViewById(R.id.tvRegAttendance);
         TextView tvEmpName = findViewById(R.id.tvEmpName);
         tvEmpName.setText(String.format(Constants.HELLO_MSG, empName));
         pbRegAttend = findViewById(R.id.pb_register_attendance);
@@ -119,14 +129,18 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
 
         reg_attend_form = findViewById(R.id.reg_attend_form);
 
-        RelativeLayout rlRegAttend = findViewById(R.id.rlRegAttendance);
+        rlRegAttend = findViewById(R.id.rlRegAttendance);
         rlRegAttend.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                doRegistration(empId);
+                if (isPunchedIn()) {
+                    doPunchOut();
+                } else {
+                    doPunchIn();
+                }
             }
         });
-
+        updatePunchUI(!isPunchedIn());
         setupPermissionUtils();
         if (checkPlayServices()) {
             buildGoogleApiClient();
@@ -140,11 +154,9 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
             case REQUEST_CHECK_SETTINGS:
                 switch (resultCode) {
                     case Activity.RESULT_OK:
-                        // All required changes were successfully made
                         getLocation();
                         break;
                     case Activity.RESULT_CANCELED:
-                        // The user was asked to change settings, but chose not to
                         break;
                     default:
                         break;
@@ -155,31 +167,27 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
 
     @Override
     public void onConnectionFailed(ConnectionResult result) {
-        Log.i(Constants.LOG_TAG, "Connection failed: ConnectionResult.getErrorCode() = "
+        Log.i(Constants.TAG, "Connection failed: ConnectionResult.getErrorCode() = "
                 + result.getErrorCode());
     }
 
     @Override
     public void onConnected(Bundle arg0) {
-        // Once connected with google api, get the location
-        getLocation();
+//        getLocation();
     }
 
     @Override
     public void onConnectionSuspended(int arg0) {
-        mGoogleApiClient.connect();
+//        mGoogleApiClient.connect();
     }
 
-
     // Permission check functions
-
 
     @Override
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
                                            @NonNull int[] grantResults) {
         // redirects to utils
         permissionUtils.onRequestPermissionsResult(requestCode, permissions, grantResults);
-
     }
 
     @Override
@@ -229,69 +237,6 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
         return true;
     }
 
-    @Override
-    public boolean onOptionsItemSelected(MenuItem item) {
-        switch (item.getItemId()) {
-            case R.id.mitemLogout:
-                finish();
-                return true;
-//            case R.id.mitemStartAutoUpdates:
-//                return true;
-//            case R.id.mitemStopAutoUpdates:
-//                return true;
-        }
-        return super.onOptionsItemSelected(item);
-    }
-
-    private void registerAttendance(String empId) {
-        Attendance attendance = new Attendance(empId);
-        attendance.setTime(new Date());
-        // TODO : get uniqueId for app installation
-        attendance.setLat(latitude);
-        attendance.setLon(longitude);
-        if (null == telephonyManager) {
-            checkAndRequestDeviceIdPermission();
-            populateDeviceId();
-        }
-        attendance.setDevId(deviceId);
-
-        UpdateAttendance updateAttendance = new UpdateAttendance(this, attendance);
-        updateAttendance.register();
-    }
-
-    public void handleRegisterAttendanceResponse(Response response, Attendance attendance) {
-        boolean isSuccess = (null != response && response.message().equals(MSG_OK));
-        String time = Utility.getTime();
-        String successMsg = String.format("Attendance registered at %s. \n Loc: (%s,%s)", time, attendance.getLon(), attendance.getLat());
-        String failedMsg = "Registration failed.\nUnable to connect to service.";
-        Utility.showMessageDialog(RegisterAttendanceActivity.this, isSuccess ? successMsg : failedMsg, isSuccess ? R.mipmap.right : R.mipmap.wrong);
-        Utility.toastMsg(context, isSuccess ? successMsg : failedMsg);
-    }
-
-
-    private void showGpsNotEnabledDialog() {
-        AlertDialog.Builder builder = new AlertDialog.Builder(context);
-        builder.setTitle("Alert:");
-        builder.setMessage("GPS is not enabled. Would you like to enable it?");
-        builder.setCancelable(false);
-        builder.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialogInterface, int i) {
-                Intent locationIntent = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
-                context.startActivity(locationIntent);
-            }
-        });
-        builder.setNegativeButton("No", new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface dialogInterface, int i) {
-                dialogInterface.cancel();
-                Utility.toastMsg(context, "Attendance not registered.");
-            }
-        });
-        alertDialog = builder.create();
-        alertDialog.show();
-    }
-
     // Code for fetching deviceId
 
     private void configureTelephonyManager() {
@@ -325,7 +270,6 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
         if (mLastLocation != null) {
             latitude = mLastLocation.getLatitude();
             longitude = mLastLocation.getLongitude();
-            populateAddress();
         } else {
             Utility.toastMsg(context, "Couldn't get the location. Make sure location is enabled on the device");
             return;
@@ -348,64 +292,6 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
                         .getLastLocation(mGoogleApiClient);
             } catch (SecurityException e) {
                 e.printStackTrace();
-            }
-        }
-    }
-
-    public Address getAddress(double latitude, double longitude) {
-        Geocoder geocoder;
-        List<Address> addresses;
-        geocoder = new Geocoder(this, Locale.getDefault());
-
-        try {
-            addresses = geocoder.getFromLocation(latitude, longitude, 1); // Here 1 represent max location result to returned, by documents it recommended 1 to 5
-            return addresses.get(0);
-
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        return null;
-    }
-
-    public void populateAddress() {
-
-        Address locationAddress = getAddress(latitude, longitude);
-
-        if (locationAddress != null) {
-            String address = locationAddress.getAddressLine(0);
-            String address1 = locationAddress.getAddressLine(1);
-            String city = locationAddress.getLocality();
-            String state = locationAddress.getAdminArea();
-            String country = locationAddress.getCountryName();
-            String postalCode = locationAddress.getPostalCode();
-
-            String currentLocation;
-
-            if (!TextUtils.isEmpty(address)) {
-                currentLocation = address;
-
-                if (!TextUtils.isEmpty(address1))
-                    currentLocation += "\n" + address1;
-
-                if (!TextUtils.isEmpty(city)) {
-                    currentLocation += "\n" + city;
-
-                    if (!TextUtils.isEmpty(postalCode))
-                        currentLocation += " - " + postalCode;
-                } else {
-                    if (!TextUtils.isEmpty(postalCode))
-                        currentLocation += "\n" + postalCode;
-                }
-
-                if (!TextUtils.isEmpty(state))
-                    currentLocation += "\n" + state;
-
-                if (!TextUtils.isEmpty(country))
-                    currentLocation += "\n" + country;
-
-                tvAddress.setText("Your location:\n" + currentLocation);
-                tvAddress.setVisibility(View.VISIBLE);
-                tvEmpty.setVisibility(View.GONE);
             }
         }
     }
@@ -459,7 +345,6 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
 
     }
 
-
     /**
      * Method to verify google play services on the device
      */
@@ -508,6 +393,132 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
     public void showProgressBar(boolean show) {
         pbRegAttend.setVisibility(show ? View.VISIBLE : View.GONE);
         reg_attend_form.setVisibility(show ? View.GONE : View.VISIBLE);
+    }
+
+    private void registerAttendance(String empId) {
+        Attendance attendance = new Attendance(empId);
+        attendance.setTime(new Date());
+        // TODO : get uniqueId for app installation
+        attendance.setLat(latitude);
+        attendance.setLon(longitude);
+        if (null == telephonyManager) {
+            checkAndRequestDeviceIdPermission();
+            populateDeviceId();
+        }
+        attendance.setDevId(deviceId);
+
+        // set deviceId and empId in preferences for background update
+        PreferenceManager.getDefaultSharedPreferences(context).edit().putString(Constants.EMP_ID, attendance.getId()).apply();
+        PreferenceManager.getDefaultSharedPreferences(context).edit().putString(Constants.DEVICE_ID, attendance.getDevId()).apply();
+
+        UpdateAttendance updateAttendance = new UpdateAttendance(this, attendance);
+        updateAttendance.setContext(getApplicationContext());
+        updateAttendance.register();
+
+        // cant register multiple times
+        rlRegAttend.setEnabled(false);
+    }
+
+    public void handleRegisterAttendanceResponse(Response response, Attendance attendance) {
+        boolean isSuccess = (null != response && response.message().equals(MSG_OK));
+        if (!isSuccess) {
+            // if registration failed allow registering for multiple times
+            rlRegAttend.setEnabled(true);
+        }
+        String time = Utility.getTime();
+        String successMsg = String.format("Attendance registered at %s. \n Loc: (%s,%s)", time, attendance.getLon(), attendance.getLat());
+        String failedMsg = "Registration failed.\nUnable to connect to service.";
+        Utility.showMessageDialog(RegisterAttendanceActivity.this, isSuccess ? successMsg : failedMsg, isSuccess ? R.mipmap.right : R.mipmap.wrong);
+        Utility.toastMsg(context, isSuccess ? successMsg : failedMsg);
+    }
+
+    private void showGpsNotEnabledDialog() {
+        AlertDialog.Builder builder = new AlertDialog.Builder(context);
+        builder.setTitle("Alert:");
+        builder.setMessage("GPS is not enabled. Would you like to enable it?");
+        builder.setCancelable(false);
+        builder.setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialogInterface, int i) {
+                Intent locationIntent = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
+                context.startActivity(locationIntent);
+            }
+        });
+        builder.setNegativeButton("No", new DialogInterface.OnClickListener() {
+            @Override
+            public void onClick(DialogInterface dialogInterface, int i) {
+                dialogInterface.cancel();
+                Utility.toastMsg(context, "Attendance not registered.");
+            }
+        });
+        alertDialog = builder.create();
+        alertDialog.show();
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        switch (item.getItemId()) {
+            case R.id.mitemLogout:
+                finish();
+                return true;
+            case R.id.mitemStartAutoUpdates:
+                backgroundTaskHandler.scheduleUpdateLocationToServerAlarm();
+                return true;
+            case R.id.mitemStopAutoUpdates:
+                backgroundTaskHandler.cancelUpdateLocationToServerAlarm();
+                backgroundTaskHandler.stopLocationMonitoringService();
+                return true;
+            case R.id.mitemReadStoredLocations:
+                List<Attendance> attendances = FileHandler.readAttendanceFromFile(getApplicationContext());
+                if (CollectionUtils.isEmpty(attendances)) {
+                    Utility.toastMsg(getApplicationContext(), "No stored locations to show");
+                    return true;
+                }
+                StringBuilder sb = new StringBuilder();
+                for (Attendance attendance : attendances) {
+                    sb.append(attendance.toString()).append("\n");
+                }
+                Utility.showMessageDialog(RegisterAttendanceActivity.this, sb.toString());
+                return true;
+            case R.id.mitemCleanLocations:
+                FileHandler.cleanUp(getApplicationContext());
+                return true;
+        }
+        return super.onOptionsItemSelected(item);
+    }
+
+
+    private boolean isPunchedIn() {
+        String punchStatus = Utility.readFromSharedPref(getApplicationContext(), Constants.PUNCH_STATUS);
+        return StringUtils.equals(Constants.PUNCHED_IN, punchStatus);
+    }
+
+    private void doPunchIn() {
+        backgroundTaskHandler.scheduleAlarmToStartLocationMonitorService();
+        backgroundTaskHandler.scheduleUpdateLocationToServerAlarm();
+        Utility.saveSharedPref(getApplicationContext(), Constants.PUNCH_STATUS, Constants.PUNCHED_IN);
+        // set to punch out
+        updatePunchUI(false);
+    }
+
+    private void doPunchOut() {
+        backgroundTaskHandler.cancelUpdateLocationToServerAlarm();
+        backgroundTaskHandler.cancelAlarmToStartLocationMonitorService();
+        backgroundTaskHandler.stopLocationMonitoringService();
+        Utility.saveSharedPref(getApplicationContext(), Constants.PUNCH_STATUS, Constants.PUNCHED_OUT);
+        // set to punch in
+        updatePunchUI(true);
+    }
+
+    private void updatePunchUI(boolean setPunchedIn) {
+        String action = setPunchedIn ? "Punch In" : "Punch Out";
+        int color = getColor(setPunchedIn ? R.color.colorGreen : R.color.colorOrange);
+        String startStop = setPunchedIn ? "start" : "stop";
+
+        tvTodoMsg.setText(String.format("Tap '%s' to %s regular punching in background", action, startStop));
+        tvRegAttendance.setText(action);
+        tvRegAttendance.setBackgroundColor(color);
+        rlRegAttend.setBackgroundColor(color);
     }
 
 }
