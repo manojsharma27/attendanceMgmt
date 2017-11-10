@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<menu xmlns:android="http://schemas.android.com/apk/res/android" >
+
+    <item
+        android:id="@+id/mitemLogout"
+        android:enabled="true"
+        android:title="Logout"
+        android:visible="true">
+    </item>
+
+    <!--<item-->
+        <!--android:id="@+id/mitemStartAutoUpdates"-->
+        <!--android:enabled="true"-->
+        <!--android:title="Auto Register"-->
+        <!--android:visible="true">-->
+    <!--</item>-->
+
+    <!--<item-->
+        <!--android:id="@+id/mitemStopAutoUpdates"-->
+        <!--android:enabled="true"-->
+        <!--android:title="Stop Registering"-->
+        <!--android:visible="true">-->
+    <!--</item>-->
+
+</menu>
