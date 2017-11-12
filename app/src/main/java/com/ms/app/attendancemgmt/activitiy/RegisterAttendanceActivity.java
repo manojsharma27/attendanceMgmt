@@ -6,11 +6,12 @@ import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.IntentSender;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.os.Bundle;
-import android.preference.PreferenceManager;
+import android.os.Handler;
 import android.provider.Settings;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
@@ -42,9 +43,12 @@ import com.google.android.gms.location.LocationSettingsStatusCodes;
 import com.ms.app.attendancemgmt.R;
 import com.ms.app.attendancemgmt.location.LocationUtil.PermissionUtils;
 import com.ms.app.attendancemgmt.model.Attendance;
+import com.ms.app.attendancemgmt.register.ServerUpdateResponseHandler;
 import com.ms.app.attendancemgmt.register.UpdateAttendance;
 import com.ms.app.attendancemgmt.service.BackgroundTaskHandler;
 import com.ms.app.attendancemgmt.service.FileHandler;
+import com.ms.app.attendancemgmt.service.LocationMonitoringService;
+import com.ms.app.attendancemgmt.service.UpdateLocationToServerBroadcastReceiver;
 import com.ms.app.attendancemgmt.util.Constants;
 import com.ms.app.attendancemgmt.util.MasterPinValidateCallback;
 import com.ms.app.attendancemgmt.util.Utility;
@@ -62,7 +66,7 @@ import static com.ms.app.attendancemgmt.util.Constants.MSG_OK;
 
 public class RegisterAttendanceActivity extends AppCompatActivity implements GoogleApiClient.ConnectionCallbacks,
         GoogleApiClient.OnConnectionFailedListener, ActivityCompat.OnRequestPermissionsResultCallback,
-        PermissionUtils.PermissionResultCallback {
+        PermissionUtils.PermissionResultCallback, ServerUpdateResponseHandler {
     private static final int LOCATION_PERMISSION_REQUEST_CODE = 191;
     private static final int PHONE_STATE_PERMISSION_REQUEST_CODE = 192;
 
@@ -101,14 +105,8 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
         super.onCreate(bundle);
         setContentView(R.layout.reg_attend_temp);
         context = RegisterAttendanceActivity.this;
+        onNewIntent(getIntent());
         String empName = this.getIntent().getExtras().getString(Constants.EMP_NAME);
-        final String empId = this.getIntent().getExtras().getString(Constants.EMP_ID);
-        Utility.saveSharedPref(getApplicationContext(), Constants.EMP_ID, empId);
-//        final Employee employee = Utility.searchEmployeeFromPin(empName);
-        if (StringUtils.isEmpty(empId)) {
-            showEmpNotFoundDialog();
-            return;
-        }
 
         backgroundTaskHandler = new BackgroundTaskHandler(context);
         tvTodoMsg = findViewById(R.id.tvTodoMsg);
@@ -127,7 +125,7 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
                 if (isPunchedIn()) {
                     doPunchOut();
                 } else {
-                    doRegistration(empId); // instant location updates when punchIn clicked.
+                    doRegistration(Utility.readPref(context, Constants.EMP_ID)); // instant location updates when punchIn clicked.
                     doPunchIn();
                 }
             }
@@ -143,6 +141,19 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
         }
     }
 
+    @Override
+    protected void onNewIntent(Intent intent) {
+        super.onNewIntent(intent);
+        setIntent(intent);
+        String empId = this.getIntent().getExtras().getString(Constants.EMP_ID);
+        String empName = this.getIntent().getExtras().getString(Constants.EMP_NAME);
+        if (StringUtils.isEmpty(empId)) {
+            showEmpNotFoundDialog();
+            return;
+        }
+        Utility.writePref(getApplicationContext(), Constants.EMP_ID, empId);
+        Utility.writePref(getApplicationContext(), Constants.EMP_NAME, empName);
+    }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
@@ -412,14 +423,17 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
         attendance.setDevId(deviceId);
 
         // set deviceId and empId in preferences for background update
-        PreferenceManager.getDefaultSharedPreferences(context).edit().putString(Constants.EMP_ID, attendance.getId()).apply();
-        PreferenceManager.getDefaultSharedPreferences(context).edit().putString(Constants.DEVICE_ID, attendance.getDevId()).apply();
+        Utility.writePref(context, Constants.EMP_ID, attendance.getId());
+        Utility.writePref(context, Constants.DEVICE_ID, attendance.getDevId());
+//        PreferenceManager.getDefaultSharedPreferences(context).edit().putString(Constants.EMP_ID, attendance.getId()).apply();
+//        PreferenceManager.getDefaultSharedPreferences(context).edit().putString(Constants.DEVICE_ID, attendance.getDevId()).apply();
 
-        UpdateAttendance updateAttendance = new UpdateAttendance(this, attendance);
+        UpdateAttendance updateAttendance = new UpdateAttendance(RegisterAttendanceActivity.this, attendance);
         updateAttendance.setContext(getApplicationContext());
         updateAttendance.register();
     }
 
+    @Override
     public void handleRegisterAttendanceResponse(Response response, Attendance attendance) {
         boolean isSuccess = (null != response && response.message().equals(MSG_OK));
         String time = Utility.getTime();
@@ -433,10 +447,14 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
             case R.id.mitemLogout:
+                if (isPunchedIn()) {
+                    doPunchOut();
+                }
                 finish();
                 return true;
             case R.id.mitemStopAutoUpdates:
-                backgroundTaskHandler.cancelUpdateLocationToServerAlarm();
+//                backgroundTaskHandler.cancelUpdateLocationToServerAlarm();
+                backgroundTaskHandler.stopLocationMonitorService(this);
                 backgroundTaskHandler.stopLocationMonitoringService();
                 return true;
             case R.id.mitemReadStoredLocations:
@@ -463,28 +481,78 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
                 };
                 Utility.loadGetMasterPinDialog(RegisterAttendanceActivity.this, callback);
                 return true;
+            case android.R.id.home:
+                onBackPressed();
+                return true;
         }
         return super.onOptionsItemSelected(item);
     }
 
+    private Boolean exit = false;
+
+    @Override
+    public void onBackPressed() {
+        if (isPunchedIn()) {
+            if (exit) {
+                doPunchOut();
+                finish();
+            } else {
+                Utility.toastMsg(getApplicationContext(), "Press back again to Punch out and exit");
+                exit = true;
+                new Handler().postDelayed(new Runnable() {
+                    @Override
+                    public void run() {
+                        exit = false;
+                    }
+                }, 3 * 1000);
+
+            }
+            return;
+        }
+        super.onBackPressed();
+    }
+
+    public static void showOnBackPressedDialog(final Activity activity) {
+        new AlertDialog.Builder(activity)
+                .setTitle("Alert:")
+                .setMessage("You are about to exit application without punch out. Would you like to enable it?")
+                .setCancelable(false)
+                .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialogInterface, int i) {
+                        Intent locationIntent = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
+                        activity.startActivity(locationIntent);
+                    }
+                })
+                .setNegativeButton("No", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialogInterface, int i) {
+                        dialogInterface.cancel();
+                        Utility.toastMsg(activity, "Attendance not registered.");
+                    }
+                })
+                .create()
+                .show();
+    }
+
     private boolean isPunchedIn() {
-        String punchStatus = Utility.readFromSharedPref(getApplicationContext(), Constants.PUNCH_STATUS);
+        String punchStatus = Utility.readPref(getApplicationContext(), Constants.PUNCH_STATUS);
         return StringUtils.equals(Constants.PUNCHED_IN, punchStatus);
     }
 
     private void doPunchIn() {
-        backgroundTaskHandler.scheduleAlarmToStartLocationMonitorService();
-        backgroundTaskHandler.scheduleUpdateLocationToServerAlarm();
-        Utility.saveSharedPref(getApplicationContext(), Constants.PUNCH_STATUS, Constants.PUNCHED_IN);
+        backgroundTaskHandler.startLocationMonitorService(RegisterAttendanceActivity.this);
+//        backgroundTaskHandler.scheduleUpdateLocationToServerAlarm();
+        Utility.writePref(getApplicationContext(), Constants.PUNCH_STATUS, Constants.PUNCHED_IN);
         // set to punch out
         updatePunchUI(false);
     }
 
     private void doPunchOut() {
-        backgroundTaskHandler.cancelUpdateLocationToServerAlarm();
-        backgroundTaskHandler.cancelAlarmToStartLocationMonitorService();
-        backgroundTaskHandler.stopLocationMonitoringService();
-        Utility.saveSharedPref(getApplicationContext(), Constants.PUNCH_STATUS, Constants.PUNCHED_OUT);
+//        backgroundTaskHandler.cancelUpdateLocationToServerAlarm();
+        backgroundTaskHandler.stopLocationMonitorService(RegisterAttendanceActivity.this);
+//        backgroundTaskHandler.stopLocationMonitoringService();
+        Utility.writePref(getApplicationContext(), Constants.PUNCH_STATUS, Constants.PUNCHED_OUT);
         // set to punch in
         updatePunchUI(true);
     }
@@ -505,7 +573,7 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
                 RegisterAttendanceActivity.this);
         dialogSetService.setTitle("Punch Interval (in seconds)");
         final EditText txtPunchInterval = new EditText(RegisterAttendanceActivity.this);
-        long punchInterval = Utility.getPunchingInterval(RegisterAttendanceActivity.this); //readFromSharedPref(LoginActivity.this, Constants.SERVICE_URL_PREF_KEY);
+        long punchInterval = Utility.getPunchingInterval(RegisterAttendanceActivity.this); //readPref(LoginActivity.this, Constants.SERVICE_URL_PREF_KEY);
         punchInterval = punchInterval / 1000; // since interval is in millis
         txtPunchInterval.setInputType(InputType.TYPE_CLASS_NUMBER);
         txtPunchInterval.setText(String.valueOf(punchInterval));
@@ -532,7 +600,7 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
                         }
 
                         //TODO: get interval input with some clock based ui.
-                        Utility.saveSharedPref(getApplicationContext(),
+                        Utility.writePref(getApplicationContext(),
                                 Constants.PUNCHING_INTERVAL_KEY, String.valueOf(longVal));
                         String msg = "Punch interval updated to " + value + " sec";
                         Utility.toastMsg(getApplicationContext(), msg);

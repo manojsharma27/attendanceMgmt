@@ -5,8 +5,10 @@ import android.os.AsyncTask;
 import android.util.Log;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.ms.app.attendancemgmt.R;
 import com.ms.app.attendancemgmt.activitiy.RegisterAttendanceActivity;
 import com.ms.app.attendancemgmt.model.Attendance;
+import com.ms.app.attendancemgmt.service.LocationMonitoringService;
 import com.ms.app.attendancemgmt.service.UpdateLocationToServerBroadcastReceiver;
 import com.ms.app.attendancemgmt.util.Constants;
 import com.ms.app.attendancemgmt.util.Utility;
@@ -24,21 +26,25 @@ import okhttp3.Response;
 
 public class UpdateAttendance {
     private Attendance attendance;
-    private RegisterAttendanceActivity regAttendActivity;
-    private UpdateLocationToServerBroadcastReceiver updateLocationToServerBroadcastReceiver;
-    private boolean uiBasedRequest;
+    private ServerUpdateResponseHandler responseHandler;
     private Context context;
+//    private Requester requester;
+//
+//    private enum Requester {
+//
+//        REG_ATTEND_ACT("RegisterAttendanceActivity"),
+//        UPD_LOC_BROAD_REC("UpdateLocationToServerBroadcastReceiver"),
+//        LOC_MON_SERV("LocationMonitoringService");
+//        private String value;
+//
+//        Requester(String value) {
+//            this.value = value;
+//        }
+//    }
 
-    public UpdateAttendance(RegisterAttendanceActivity regAttendActivity, Attendance attendance) {
-        this.regAttendActivity = regAttendActivity;
+    public UpdateAttendance(ServerUpdateResponseHandler responseHandler, Attendance attendance) {
+        this.responseHandler = responseHandler;
         this.attendance = attendance;
-        uiBasedRequest = true;
-    }
-
-    public UpdateAttendance(UpdateLocationToServerBroadcastReceiver updateLocationToServerBroadcastReceiver, Attendance attendance) {
-        this.updateLocationToServerBroadcastReceiver = updateLocationToServerBroadcastReceiver;
-        this.attendance = attendance;
-        uiBasedRequest = false;
     }
 
     public void setContext(Context context) {
@@ -57,6 +63,7 @@ public class UpdateAttendance {
             if (!ArrayUtils.isEmpty(attendances)) {
                 try {
                     String json = Utility.getObjectMapper().writeValueAsString(attendances[0]);
+                    Log.i(Constants.TAG, "Registering " + json);
                     String finalUrl = Utility.getServiceUrl(context) + Constants.REGISTER_ATTENDANCE_ENDPOINT;
                     OkHttpClient client = new OkHttpClient();
                     RequestBody body = RequestBody.create(MediaType.parse("application/json"), json);
@@ -84,35 +91,33 @@ public class UpdateAttendance {
         @Override
         protected void onPreExecute() {
             super.onPreExecute();
-            if (uiBasedRequest) {
-                regAttendActivity.showProgressBar(true);
+            if (responseHandler instanceof RegisterAttendanceActivity) {
+                ((RegisterAttendanceActivity) responseHandler).showProgressBar(true);
             }
         }
 
         @Override
         protected void onCancelled() {
             super.onCancelled();
-            if (uiBasedRequest) {
-                regAttendActivity.showProgressBar(false);
+            if (responseHandler instanceof RegisterAttendanceActivity) {
+                ((RegisterAttendanceActivity) responseHandler).showProgressBar(false);
             }
         }
 
         @Override
         protected void onPostExecute(Response response) {
             super.onPostExecute(response);
-            if (uiBasedRequest) {
-                regAttendActivity.showProgressBar(false);
-                regAttendActivity.handleRegisterAttendanceResponse(response, attendance);
-            } else {
-                updateLocationToServerBroadcastReceiver.handleRegisterAttendanceResponse(response, attendance);
+            if (responseHandler instanceof RegisterAttendanceActivity) {
+                ((RegisterAttendanceActivity) responseHandler).showProgressBar(false);
             }
+            responseHandler.handleRegisterAttendanceResponse(response, attendance);
         }
 
         @Override
         protected void onProgressUpdate(Integer... values) {
             super.onProgressUpdate(values);
-            if (uiBasedRequest) {
-                regAttendActivity.updateProgressBar(values[0]);
+            if (responseHandler instanceof RegisterAttendanceActivity) {
+                ((RegisterAttendanceActivity) responseHandler).updateProgressBar(values[0]);
             }
         }
     }

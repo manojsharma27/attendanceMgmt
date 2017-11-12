@@ -1,5 +1,7 @@
 package com.ms.app.attendancemgmt.util;
 
+import android.content.Context;
+
 import org.apache.commons.lang3.StringUtils;
 
 /**
@@ -11,7 +13,7 @@ public class Constants {
     public static final String EMP_NAME = "emp_name";
     public static final String HELLO_MSG = "Welcome, %s";
     public static final String TAG = "AttendMgmt_tag";
-    public static final String SHARED_PREF_NAME = "AttendMgmtSharedPref";
+    public static final String SHARED_PREF_NAME = "com.ms.app.attendancemgmt_preferences";
     public static final String SERVICE_URL_PREF_KEY = "service_url";
     public static final String MASTER_PIN = "9009";
     public static final String APP_TITLE = "Attendance Mgmt";
@@ -37,6 +39,9 @@ public class Constants {
 
     public static final long FASTEST_LOCATION_INTERVAL = 30 * 1000;
     public static final long LOCATION_INTERVAL = 60 * 1000; // default location interval 1 min
-    public static final long MIN_PUNCH_INTERVAL = LOCATION_INTERVAL; // minimum punch interval set to default
+    public static final long MIN_PUNCH_INTERVAL = 30 * 1000; // minimum punch interval set to default
     public static final long MAX_PUNCH_INTERVAL = 60 * 60 * 1000; // max punch interval set to 1 hr
+    public static final String ACTION_START_FOREGROUND_LOCATION_SERVICE = "com.ms.app.attendancemgmt.service.locationmonitoringservice.startforeground";
+    public static final String ACTION_STOP_FOREGROUND_LOCATION_SERVICE = "com.ms.app.attendancemgmt.service.locationmonitoringservice.stopforeground";
+    public static final String LAST_UPDATE_TO_SERVER_TIME = "lastUpdateToServerTimestamp";
 }

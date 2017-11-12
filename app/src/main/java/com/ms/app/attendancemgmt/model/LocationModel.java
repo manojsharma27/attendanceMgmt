@@ -7,19 +7,18 @@ import com.ms.app.attendancemgmt.util.Constants;
 import java.util.Date;
 
 public class LocationModel {
-    private double longitude;
     private double latitude;
+    private double longitude;
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = Constants.DATE_FORMAT, timezone = "UTC")
     private Date logTime;
 
-    public LocationModel(double longitude, double latitude) {
-        this.longitude = longitude;
-        this.latitude = latitude;
+    public LocationModel(double latitude, double longitude) {
+        this(latitude, longitude, new Date());
     }
 
-    public LocationModel(double longitude, double latitude, Date logTime) {
-        this.longitude = longitude;
+    public LocationModel(double latitude, double longitude, Date logTime) {
         this.latitude = latitude;
+        this.longitude = longitude;
         this.logTime = logTime;
     }
 

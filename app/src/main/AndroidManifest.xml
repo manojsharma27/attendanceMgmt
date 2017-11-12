@@ -17,24 +17,33 @@
         android:theme="@style/AppTheme">
         <activity
             android:name=".activitiy.LoginActivity"
-            android:label="@string/app_name">
+            android:label="@string/app_name"
+            android:windowSoftInputMode="adjustResize"
+
+            >
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-        <activity android:name=".activitiy.RegisterAttendanceActivity" />
-        <activity android:name=".location.MyLocationUsingLocationAPI" />
-        <!--<activity android:name=".TempActivity">-->
+        <activity
+            android:name=".activitiy.RegisterAttendanceActivity"
+            android:parentActivityName=".activitiy.LoginActivity">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".activitiy.LoginActivity" />
+        </activity>
+        <!--<receiver-->
+        <!--android:name=".service.UpdateLocationToServerBroadcastReceiver"-->
+        <!--android:process=":remote" >-->
         <!--<intent-filter>-->
-        <!--<action android:name="android.intent.action.MAIN" />-->
-        <!--<category android:name="android.intent.category.LAUNCHER" />-->
+        <!--<action android:name="UpdateLocationToServerBroadcastReceiver-updateLocation"/>-->
         <!--</intent-filter>-->
-        <!--</activity>-->
-        <receiver
-            android:name=".service.UpdateLocationToServerBroadcastReceiver"
-            android:process=":remote" />
+        <!--<intent-filter>-->
+        <!--<action android:name="LocationMonitoringService-LocationBroadcast"/>-->
+        <!--</intent-filter>-->
+        <!--</receiver>-->
         <service
             android:name=".service.LocationMonitoringService"
             android:exported="false" />

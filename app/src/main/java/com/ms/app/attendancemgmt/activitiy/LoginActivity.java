@@ -16,7 +16,6 @@ import android.os.Bundle;
 import android.preference.PreferenceManager;
 import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
-import android.text.InputType;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.KeyEvent;
@@ -24,13 +23,12 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.View.OnClickListener;
+import android.view.WindowManager;
 import android.view.inputmethod.EditorInfo;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ms.app.attendancemgmt.R;
 import com.ms.app.attendancemgmt.model.LoginResponse;
 import com.ms.app.attendancemgmt.util.Constants;
@@ -44,7 +42,6 @@ import java.io.IOException;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
-import okhttp3.internal.Util;
 
 /**
  * A login screen that offers login via email/password.
@@ -227,7 +224,8 @@ public class LoginActivity extends AppCompatActivity {
                 if (null != loginResp && "Success".equals(loginResp.getStatus()) && !loginResp.getEmpId().equals("0")) {
                     empId = loginResp.getEmpId();
                     empName = loginResp.getMessage();
-                    PreferenceManager.getDefaultSharedPreferences(getApplicationContext()).edit().putString(Constants.EMP_ID, empId).apply();
+                    Utility.writePref(getApplicationContext(), Constants.EMP_ID, empId);
+//                    PreferenceManager.getDefaultSharedPreferences(getApplicationContext()).edit().putString(Constants.EMP_ID, empId).apply();
                     return true;
                 }
             } catch (IOException e) {
@@ -243,7 +241,8 @@ public class LoginActivity extends AppCompatActivity {
                 Thread.sleep(1000);
                 empId = "9898";
                 empName = "manoj";
-                PreferenceManager.getDefaultSharedPreferences(getApplicationContext()).edit().putString(Constants.EMP_ID, empId).apply();
+                Utility.writePref(getApplicationContext(), Constants.EMP_ID, empId);
+//                PreferenceManager.getDefaultSharedPreferences(getApplicationContext()).edit().putString(Constants.EMP_ID, empId).apply();
                 return true;
             } catch (InterruptedException e) {
             }
@@ -318,7 +317,7 @@ public class LoginActivity extends AppCompatActivity {
                 LoginActivity.this);
         dialogSetService.setTitle("Service Address");
         final EditText txtUrl = new EditText(LoginActivity.this);
-        String prevServiceUrl = Utility.getServiceUrl(LoginActivity.this); //readFromSharedPref(LoginActivity.this, Constants.SERVICE_URL_PREF_KEY);
+        String prevServiceUrl = Utility.getServiceUrl(LoginActivity.this); //readPref(LoginActivity.this, Constants.SERVICE_URL_PREF_KEY);
         txtUrl.setText(StringUtils.isBlank(prevServiceUrl) ? "" : prevServiceUrl);
         txtUrl.setLayoutParams(Utility.getLayoutParamsForDialogMsgText());
         dialogSetService.setView(txtUrl);
@@ -333,7 +332,7 @@ public class LoginActivity extends AppCompatActivity {
                                     "Invalid URL entered.", R.mipmap.wrong);
                             return;
                         }
-                        Utility.saveSharedPref(getApplicationContext(),
+                        Utility.writePref(getApplicationContext(),
                                 Constants.SERVICE_URL_PREF_KEY, value);
                         Utility.toastMsg(
                                 getApplicationContext(),

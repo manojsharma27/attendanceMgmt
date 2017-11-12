@@ -9,6 +9,7 @@ import android.preference.PreferenceManager;
 import android.util.Log;
 
 import com.ms.app.attendancemgmt.util.Constants;
+import com.ms.app.attendancemgmt.util.Utility;
 
 public class MyAlarmReceiver extends BroadcastReceiver {
     public static final int REQUEST_CODE = 12345;
@@ -18,9 +19,10 @@ public class MyAlarmReceiver extends BroadcastReceiver {
     @Override
     public void onReceive(Context context, Intent intent) {
 //        prevTestCode(context);
-        long repeatCount = PreferenceManager.getDefaultSharedPreferences(context).getLong("REPEAT_COUNT", 0L);
-        String empId = PreferenceManager.getDefaultSharedPreferences(context).getString(Constants.EMP_ID, "myempid");
-        String devId = PreferenceManager.getDefaultSharedPreferences(context).getString(Constants.DEVICE_ID, "mydevid");
+        String repeat_count = Utility.readPref(context, "REPEAT_COUNT");
+        long repeatCount = Long.parseLong(null == repeat_count ? "0" : repeat_count); //PreferenceManager.getDefaultSharedPreferences(context).getLong("REPEAT_COUNT", 0L);
+        String empId = Utility.readPref(context, Constants.EMP_ID); // PreferenceManager.getDefaultSharedPreferences(context).getString(Constants.EMP_ID, "myempid");
+        String devId = Utility.readPref(context, Constants.DEVICE_ID); // PreferenceManager.getDefaultSharedPreferences(context).getString(Constants.DEVICE_ID, "mydevid");
 
         Intent i = new Intent(context, MyAnotherService.class);
         i.putExtra(Constants.EMP_ID, empId);
@@ -35,13 +37,15 @@ public class MyAlarmReceiver extends BroadcastReceiver {
             return;
         }
 
-        PreferenceManager.getDefaultSharedPreferences(context).edit().putLong("REPEAT_COUNT", repeatCount).apply();
+        Utility.writePref(context, "REPEAT_COUNT", String.valueOf(repeatCount));
+//        PreferenceManager.getDefaultSharedPreferences(context).edit().putLong("REPEAT_COUNT", repeatCount).apply();
         Log.i("MyTestService", "Next alarm scheduled.");
         setAnotherAlarm(context);
     }
 
     private void prevTestCode(Context context) {
-        long repeatCount = PreferenceManager.getDefaultSharedPreferences(context).getLong("REPEAT_COUNT", 0L);
+        String repeat_count = Utility.readPref(context, "REPEAT_COUNT");
+        long repeatCount = Long.parseLong(null == repeat_count ? "0" : repeat_count); //PreferenceManager.getDefaultSharedPreferences(context).getLong("REPEAT_COUNT", 0L);
 
         Intent i = new Intent(context, MyTestService.class);
         i.putExtra("foo", "bar");
@@ -57,7 +61,8 @@ public class MyAlarmReceiver extends BroadcastReceiver {
             return;
         }
 
-        PreferenceManager.getDefaultSharedPreferences(context).edit().putLong("REPEAT_COUNT", repeatCount).apply();
+        Utility.writePref(context, "REPEAT_COUNT", String.valueOf(repeatCount));
+//        PreferenceManager.getDefaultSharedPreferences(context).edit().putLong("REPEAT_COUNT", repeatCount).apply();
         Log.i("MyTestService", "Next alarm scheduled.");
 
         // set another alarm after 1 sec.

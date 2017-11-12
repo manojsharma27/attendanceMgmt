@@ -91,19 +91,19 @@ public class Utility {
         Toast.makeText(context, msg, Toast.LENGTH_SHORT).show();
     }
 
-    public static void saveSharedPref(Context context, String key, String value) {
-        SharedPreferences prefs = context.getSharedPreferences(Constants.SHARED_PREF_NAME, Context.MODE_PRIVATE);
+    public static void writePref(Context context, String key, String value) {
+        SharedPreferences prefs = context.getApplicationContext().getSharedPreferences(Constants.SHARED_PREF_NAME, Context.MODE_PRIVATE);
         SharedPreferences.Editor editor = prefs.edit();
         editor.putString(key, value);
         editor.apply();
 
-        if (DEFAULT_PREFS_KEYS.contains(key)) {
-            PreferenceManager.getDefaultSharedPreferences(context).edit().putString(key, value).apply();
-        }
+//        if (DEFAULT_PREFS_KEYS.contains(key)) {
+//            PreferenceManager.getDefaultSharedPreferences(context).edit().putString(key, value).apply();
+//        }
     }
 
-    public static String readFromSharedPref(Context context, String key) {
-        SharedPreferences prefs = context.getSharedPreferences(Constants.SHARED_PREF_NAME, Context.MODE_PRIVATE);
+    public static String readPref(Context context, String key) {
+        SharedPreferences prefs = context.getApplicationContext().getSharedPreferences(Constants.SHARED_PREF_NAME, Context.MODE_PRIVATE);
         return prefs.getString(key, null);
     }
 
@@ -230,7 +230,7 @@ public class Utility {
     }
 
     public static String getServiceUrl(Context context) {
-        return PreferenceManager.getDefaultSharedPreferences(context).getString(Constants.SERVICE_URL_PREF_KEY, null);
+        return readPref(context, Constants.SERVICE_URL_PREF_KEY); // PreferenceManager.getDefaultSharedPreferences(context).getString(Constants.SERVICE_URL_PREF_KEY, null);
     }
 
     public static String getTime() {
@@ -262,7 +262,7 @@ public class Utility {
     }
 
     public static long getPunchingInterval(Context context) {
-        String punchInterval = PreferenceManager.getDefaultSharedPreferences(context).getString(Constants.PUNCHING_INTERVAL_KEY, String.valueOf(Constants.MIN_PUNCH_INTERVAL));
-        return Long.parseLong(punchInterval);
+        String punchInterval = readPref(context, Constants.PUNCHING_INTERVAL_KEY); // PreferenceManager.getDefaultSharedPreferences(context).getString(Constants.PUNCHING_INTERVAL_KEY, String.valueOf(Constants.MIN_PUNCH_INTERVAL));
+        return (StringUtils.isEmpty(punchInterval) ? Constants.MIN_PUNCH_INTERVAL : Long.parseLong(punchInterval));
     }
 }

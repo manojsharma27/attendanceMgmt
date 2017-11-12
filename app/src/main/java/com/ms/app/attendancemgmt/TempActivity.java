@@ -46,7 +46,8 @@ public class TempActivity extends AppCompatActivity {
 
     // Setup a recurring alarm every half hour
     public void scheduleAlarm() {
-        PreferenceManager.getDefaultSharedPreferences(getApplicationContext()).edit().putLong("REPEAT_COUNT", 0).apply();
+//        PreferenceManager.getDefaultSharedPreferences(getApplicationContext()).edit().putLong("REPEAT_COUNT", 0).apply();
+        Utility.writePref(getApplicationContext(), "REPEAT_COUNT", String.valueOf(0));
         // Construct an intent that will execute the AlarmReceiver
         Intent intent = new Intent(getApplicationContext(), MyAlarmReceiver.class);
         // Create a PendingIntent to be triggered when the alarm goes off
