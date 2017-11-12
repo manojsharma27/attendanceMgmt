@@ -17,13 +17,13 @@
         android:id="@+id/mitemReadStoredLocations"
         android:enabled="true"
         android:title="View Stored Locations"
-        android:visible="false"/>
+        android:visible="true"/>
 
     <item
         android:id="@+id/mitemCleanLocations"
         android:enabled="true"
         android:title="Clean Locations"
-        android:visible="false" />
+        android:visible="true" />
 
     <item
         android:id="@+id/mitemLocUpdateInterval"

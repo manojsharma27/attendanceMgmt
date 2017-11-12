@@ -44,4 +44,9 @@ public class Constants {
     public static final String ACTION_START_FOREGROUND_LOCATION_SERVICE = "com.ms.app.attendancemgmt.service.locationmonitoringservice.startforeground";
     public static final String ACTION_STOP_FOREGROUND_LOCATION_SERVICE = "com.ms.app.attendancemgmt.service.locationmonitoringservice.stopforeground";
     public static final String LAST_UPDATE_TO_SERVER_TIME = "lastUpdateToServerTimestamp";
+    public static final String FILE_DELIMITER = "|";
+    public static final String STARTED = "started";
+    public static final String STOPPED = "stopped";
+    public static final String SERVICE_STATUS = "service_status";
+
 }

@@ -66,6 +66,13 @@ public class LoginActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
 
+        if (Utility.isLocationServiceStarted(this.getApplicationContext())) {
+            empId = Utility.readPref(this.getApplicationContext(), Constants.EMP_ID);
+            empName = Utility.readPref(this.getApplicationContext(), Constants.EMP_NAME);
+            loadRegisterAttendanceActivity();
+            finish();
+        }
+
         txtPin = findViewById(R.id.pin);
         txtPin.setOnEditorActionListener(new TextView.OnEditorActionListener() {
             @Override
@@ -132,7 +139,7 @@ public class LoginActivity extends AppCompatActivity {
                 return;
             }
 
-            if (checkInternetConnected()) {
+            if (Utility.checkInternetConnected(LoginActivity.this)) {
                 mAuthTask = new UserLoginTask(pin);
                 mAuthTask.execute((Void) null);
             } else {
@@ -298,18 +305,6 @@ public class LoginActivity extends AppCompatActivity {
                 return true;
         }
         return super.onOptionsItemSelected(item);
-    }
-
-    private boolean checkInternetConnected() {
-        ConnectivityManager connectivityManager
-                = (ConnectivityManager) getSystemService(Context.CONNECTIVITY_SERVICE);
-        NetworkInfo activeNetworkInfo = connectivityManager.getActiveNetworkInfo();
-
-        if (null == activeNetworkInfo || !activeNetworkInfo.isConnected()) {
-            Utility.showMessageDialog(LoginActivity.this, "No Internet Connection !", R.mipmap.img_sad_smiley);
-            return false;
-        }
-        return Utility.ableToAccessInternet(2 * 1000);
     }
 
     protected void loadSetServiceUrlDialog() {

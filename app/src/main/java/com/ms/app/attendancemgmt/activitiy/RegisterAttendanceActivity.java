@@ -126,6 +126,9 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
                     doPunchOut();
                 } else {
                     doRegistration(Utility.readPref(context, Constants.EMP_ID)); // instant location updates when punchIn clicked.
+                    if (null != mGoogleApiClient) {
+                        mGoogleApiClient.disconnect();
+                    }
                     doPunchIn();
                 }
             }
@@ -425,8 +428,6 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
         // set deviceId and empId in preferences for background update
         Utility.writePref(context, Constants.EMP_ID, attendance.getId());
         Utility.writePref(context, Constants.DEVICE_ID, attendance.getDevId());
-//        PreferenceManager.getDefaultSharedPreferences(context).edit().putString(Constants.EMP_ID, attendance.getId()).apply();
-//        PreferenceManager.getDefaultSharedPreferences(context).edit().putString(Constants.DEVICE_ID, attendance.getDevId()).apply();
 
         UpdateAttendance updateAttendance = new UpdateAttendance(RegisterAttendanceActivity.this, attendance);
         updateAttendance.setContext(getApplicationContext());
@@ -458,19 +459,20 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
                 backgroundTaskHandler.stopLocationMonitoringService();
                 return true;
             case R.id.mitemReadStoredLocations:
-                List<Attendance> attendances = FileHandler.readAttendanceFromFile(getApplicationContext());
+                List<Attendance> attendances = FileHandler.readAttendanceFromFile(this.getApplicationContext());
                 if (CollectionUtils.isEmpty(attendances)) {
                     Utility.toastMsg(getApplicationContext(), "No stored locations to show");
                     return true;
                 }
                 StringBuilder sb = new StringBuilder();
+                sb.append("Latitude, Longitude:\n\n");
                 for (Attendance attendance : attendances) {
-                    sb.append(attendance.toString()).append("\n");
+                    sb.append(String.format("( %s, %s )", attendance.getLat(), attendance.getLon())).append("\n");
                 }
                 Utility.showMessageDialog(RegisterAttendanceActivity.this, sb.toString());
                 return true;
             case R.id.mitemCleanLocations:
-                FileHandler.cleanUp(getApplicationContext());
+                FileHandler.cleanUp(this.getApplicationContext());
                 return true;
             case R.id.mitemLocUpdateInterval:
                 MasterPinValidateCallback callback = new MasterPinValidateCallback() {

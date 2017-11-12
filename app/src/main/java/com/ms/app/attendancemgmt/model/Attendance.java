@@ -18,6 +18,9 @@ public class Attendance {
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = Constants.DATE_FORMAT, timezone = "UTC")
     private Date time;
 
+    public Attendance() {
+    }
+
     public Attendance(String id) {
         this.id = id;
     }

@@ -4,12 +4,14 @@ package com.ms.app.attendancemgmt.service;
 import android.content.Context;
 import android.os.Environment;
 import android.util.Log;
+import android.widget.Toast;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ms.app.attendancemgmt.model.Attendance;
 import com.ms.app.attendancemgmt.model.LocationModel;
 import com.ms.app.attendancemgmt.util.Constants;
+import com.ms.app.attendancemgmt.util.Utility;
 
 import org.apache.commons.collections4.CollectionUtils;
 import org.apache.commons.lang3.StringUtils;
@@ -24,112 +26,17 @@ import java.io.FileReader;
 import java.io.FileWriter;
 import java.io.IOException;
 import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
 
+import static android.content.Context.MODE_APPEND;
+
 public class FileHandler {
 
-    private static final String FILE_NAME = "LocationFetcherData.txt";
-
-    private static File getFile(Context context) {
-        File filesDir = context.getFilesDir();
-        if (filesDir.exists() && filesDir.isDirectory()) {
-            File file = new File(FILE_NAME);
-            if (!file.exists()) {
-                try {
-                    boolean newFile = file.createNewFile();
-                    return newFile ? file : null;
-                } catch (IOException e) {
-                    Log.e(Constants.TAG, "Failed to create new file : " + file.getAbsolutePath());
-                }
-            } else {
-                return file;
-            }
-        }
-        return null;
-    }
-
-    private static void writeLocationsToFile(Context context, LocationModel locationModel) {
-        ObjectMapper om = new ObjectMapper();
-        String modelStr = null;
-        try {
-            modelStr = om.writeValueAsString(locationModel);
-        } catch (JsonProcessingException e) {
-        }
-        if (StringUtils.isEmpty(modelStr)) {
-            return;
-        }
-        modelStr += "\n";
-//        FileOutputStream outputStream = null;
-        BufferedWriter bw = null;
-        try {
-            File file = new File(FILE_NAME);
-            if (!file.exists()) {
-                boolean created = file.createNewFile();
-                if (!created) {
-                    Log.e(Constants.TAG, "Failed to create new file : " + FILE_NAME);
-                    return;
-                }
-            }
-
-            FileWriter fw = new FileWriter(file.getAbsoluteFile());
-            bw = new BufferedWriter(fw);
-            bw.write(modelStr);
-            bw.close();
-//            outputStream = context.openFileOutput(FILE_NAME, Context.MODE_APPEND);
-//            outputStream.write(modelStr.getBytes());
-//            outputStream.flush();
-//            outputStream.close();
-        } catch (Exception e) {
-            Log.e(Constants.TAG, "Exception while writing to file : " + e);
-        } finally {
-            if (null != bw) {
-                try {
-                    bw.close();
-                } catch (IOException e) {
-                }
-            }
-        }
-    }
-
-    private static List<LocationModel> readLocationsFromFile(Context context) {
-        FileInputStream fileInputStream;
-        List<String> textList = new ArrayList<>();
-        BufferedReader br = null;
-        try {
-//            fileInputStream = context.openFileInput(FILE_NAME);
-//            DataInputStream in = new DataInputStream(fileInputStream);
-            br = new BufferedReader(new FileReader(FILE_NAME));
-            String line = "";
-            while ((line = br.readLine()) != null) {
-                textList.add(line);
-            }
-        } catch (IOException e) {
-            Log.e(Constants.TAG, "Exception while reading from file : " + e);
-        } finally {
-            if (null != br) {
-                try {
-                    br.close();
-                } catch (IOException e) {
-                }
-            }
-        }
-
-        ObjectMapper om = new ObjectMapper();
-        if (CollectionUtils.isEmpty(textList)) {
-            return Collections.emptyList();
-        }
-        List<LocationModel> models = new ArrayList<>();
-        for (String text : textList) {
-            try {
-                LocationModel locationModel = om.readValue(text, LocationModel.class);
-                models.add(locationModel);
-            } catch (IOException e) {
-            }
-        }
-        return models;
-    }
+    private static final String FILE_NAME = "/LocationFetcherData.txt";
 
     public static void writeAttendanceToFile(Context context, Attendance attendance) {
         ObjectMapper om = new ObjectMapper();
@@ -141,62 +48,77 @@ public class FileHandler {
         if (StringUtils.isEmpty(modelStr)) {
             return;
         }
-        modelStr += "\n";
-        BufferedWriter bw = null;
-        File file = getFile(context);
-        if (null == file) {
-            Log.e(Constants.TAG, "Failed to get file : " + file.getAbsolutePath());
-        }
+        FileOutputStream fileout = null;
+        OutputStreamWriter outputWriter = null;
+        String fileName = context.getFilesDir() + FILE_NAME;
         try {
-            FileWriter fw = new FileWriter(file.getAbsoluteFile(), true);
-            bw = new BufferedWriter(fw);
-            bw.write(modelStr);
-            bw.close();
+            fileout = new FileOutputStream(new File(fileName), true);
+            outputWriter = new OutputStreamWriter(fileout);
+            outputWriter.write(modelStr + Constants.FILE_DELIMITER);
+            outputWriter.close();
+            Log.i(Constants.TAG, "Attendance recorded in file");
         } catch (Exception e) {
-            Log.e(Constants.TAG, "Exception while writing to file : " + e);
+            Log.e(Constants.TAG, "Error saving file. " + e);
         } finally {
-            if (null != bw) {
+            if (null != outputWriter) {
                 try {
-                    bw.close();
+                    outputWriter.close();
+                } catch (IOException e) {
+                }
+            }
+            if (null != fileout) {
+                try {
+                    fileout.close();
                 } catch (IOException e) {
                 }
             }
         }
-        Log.i(Constants.TAG, "Attendance recorded in file");
     }
 
     public static List<Attendance> readAttendanceFromFile(Context context) {
-        List<String> textList = new ArrayList<>();
-        BufferedReader br = null;
-        File file = getFile(context);
-        if (null == file) {
-            Log.e(Constants.TAG, "Failed to get file : " + file.getAbsolutePath());
-        }
+        FileInputStream fileIn = null;
+        InputStreamReader reader = null;
+        String fileName = context.getFilesDir() + FILE_NAME;
+        StringBuilder sb = new StringBuilder();
         try {
-            br = new BufferedReader(new FileReader(file));
-            String line = "";
-            while ((line = br.readLine()) != null) {
-                textList.add(line);
+            fileIn = new FileInputStream (new File(fileName));
+            reader = new InputStreamReader(fileIn);
+
+            char[] inputBuffer = new char[100];
+            int charRead;
+
+            while ((charRead = reader.read(inputBuffer)) > 0) {
+                // char to string conversion
+                String readstring = String.copyValueOf(inputBuffer, 0, charRead);
+                sb.append(readstring);
             }
-        } catch (IOException e) {
-            Log.e(Constants.TAG, "Exception while reading from file : " + e);
+            reader.close();
+
+        } catch (Exception e) {
+            e.printStackTrace();
         } finally {
-            if (null != br) {
+            if (null != reader) {
                 try {
-                    br.close();
+                    reader.close();
+                } catch (IOException e) {
+                }
+            }
+            if (null != fileIn) {
+                try {
+                    fileIn.close();
                 } catch (IOException e) {
                 }
             }
         }
 
-        ObjectMapper om = new ObjectMapper();
-        if (CollectionUtils.isEmpty(textList)) {
+        if (StringUtils.isEmpty(sb.toString())) {
             return Collections.emptyList();
         }
+        List<String> textList = Arrays.asList(sb.toString().split("\\" + Constants.FILE_DELIMITER));
         List<Attendance> attendances = new ArrayList<>();
         for (String text : textList) {
             try {
-                Attendance attendance = om.readValue(text, Attendance.class);
+                Attendance attendance = Utility.getObjectMapper().readValue(text, Attendance.class);
                 attendances.add(attendance);
             } catch (IOException e) {
             }
@@ -205,7 +127,8 @@ public class FileHandler {
     }
 
     public static void cleanUp(Context context) {
-        File file = new File(FILE_NAME);
+        String fileName = context.getFilesDir() + FILE_NAME;
+        File file = new File(fileName);
         if (file.exists()) {
             boolean deleted = file.delete();
             if (deleted) {

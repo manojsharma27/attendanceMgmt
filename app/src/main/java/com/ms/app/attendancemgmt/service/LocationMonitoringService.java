@@ -2,9 +2,11 @@ package com.ms.app.attendancemgmt.service;
 
 
 import android.Manifest;
+import android.app.AlarmManager;
 import android.app.Notification;
 import android.app.PendingIntent;
 import android.app.Service;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -13,6 +15,7 @@ import android.graphics.BitmapFactory;
 import android.location.Location;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.os.Looper;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
@@ -21,8 +24,11 @@ import android.util.Log;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.location.LocationAvailability;
+import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationListener;
 import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
 import com.ms.app.attendancemgmt.R;
 import com.ms.app.attendancemgmt.activitiy.LoginActivity;
@@ -35,6 +41,10 @@ import com.ms.app.attendancemgmt.util.Constants;
 import com.ms.app.attendancemgmt.util.Utility;
 
 import org.apache.commons.lang3.StringUtils;
+
+import java.util.Date;
+import java.util.Timer;
+import java.util.TimerTask;
 
 import okhttp3.Response;
 
@@ -53,6 +63,8 @@ public class LocationMonitoringService extends Service implements
     private static final int NOTIFICATION_ID_FOREGROUND_SERVICE = 12121;
     public static final int REQUEST_CODE = 11012;
     public static final String ACTION_LOCATION_BROADCAST = "LocationMonitoringService-LocationBroadcast";
+    private TimerTask timerTask;
+    private Timer timer;
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
@@ -84,15 +96,38 @@ public class LocationMonitoringService extends Service implements
                     .setSmallIcon(R.mipmap.gps_icon)
                     .setLargeIcon(Bitmap.createScaledBitmap(icon, 100, 100, false))
                     .setContentIntent(pendingIntent)
+                    .setOngoing(true)
                     .build();
 
             startForeground(NOTIFICATION_ID_FOREGROUND_SERVICE, notification);
             Utility.writePref(this.getApplicationContext(), Constants.LAST_UPDATE_TO_SERVER_TIME, String.valueOf(System.currentTimeMillis()));
-
+            configureLocationUpdateRequesterTask();
+            Utility.updateLocationServiceStatus(LocationMonitoringService.this.getApplicationContext(), Constants.STARTED);
         } else if (action.equals(Constants.ACTION_STOP_FOREGROUND_LOCATION_SERVICE)) {
             Log.i(Constants.TAG, "Received Stop Foreground Intent");
             stopForeground(true);
+            stopLocationUpdateRequesterTask();
             stopSelf();
+        }
+    }
+
+    private void configureLocationUpdateRequesterTask() {
+        timerTask = new TimerTask() {
+            @Override
+            public void run() {
+                requestLocationUpdate();
+            }
+        };
+        timer = new Timer();
+        timer.schedule(timerTask, Constants.FASTEST_LOCATION_INTERVAL, Constants.MIN_PUNCH_INTERVAL);
+    }
+
+    private void stopLocationUpdateRequesterTask() {
+        if (null != timerTask) {
+            timerTask.cancel();
+        }
+        if (null != timer) {
+            timer.cancel();
         }
     }
 
@@ -127,12 +162,18 @@ public class LocationMonitoringService extends Service implements
 
     @Override
     public void onConnected(Bundle dataBundle) {
+        requestLocationUpdate();
+        Log.d(TAG, "Connected to Google API");
+    }
+
+    private void requestLocationUpdate() {
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
                 ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
             Log.d(TAG, "== Error On onConnected(). Permission not granted");
             return;
         }
-        LocationServices.FusedLocationApi.requestLocationUpdates(mLocationClient, getLocationRequest(), this);
+        LocationServices.FusedLocationApi.flushLocations(mLocationClient);
+        LocationServices.FusedLocationApi.requestLocationUpdates(mLocationClient, getLocationRequest(), this, Looper.getMainLooper());
         Log.d(TAG, "Connected to Google API");
     }
 
@@ -165,6 +206,7 @@ public class LocationMonitoringService extends Service implements
         if (null != mLocationClient) {
             mLocationClient.disconnect();
         }
+        Utility.updateLocationServiceStatus(LocationMonitoringService.this.getApplicationContext(), Constants.STOPPED);
         super.onDestroy();
     }
 
@@ -175,9 +217,15 @@ public class LocationMonitoringService extends Service implements
         attendance.setLon(locationModel.getLongitude());
         attendance.setTime(locationModel.getLogTime());
 
-        UpdateAttendance updateAttendance = new UpdateAttendance(LocationMonitoringService.this, attendance);
-        updateAttendance.setContext(this.getApplicationContext());
-        updateAttendance.register();
+        if (Utility.checkInternetConnected(LocationMonitoringService.this.getApplicationContext())) {
+            UpdateAttendance updateAttendance = new UpdateAttendance(LocationMonitoringService.this, attendance);
+            updateAttendance.setContext(this.getApplicationContext());
+            updateAttendance.register();
+        } else {
+            // write location updates to file
+            FileHandler.writeAttendanceToFile(LocationMonitoringService.this.getApplicationContext(), attendance);
+            Log.i(Constants.TAG, "Recorded in file");
+        }
     }
 
     private boolean checkPunchIntervalElapsed() {
@@ -188,7 +236,7 @@ public class LocationMonitoringService extends Service implements
 
     private LocationRequest getLocationRequest() {
         LocationRequest mLocationRequest = new LocationRequest();
-        mLocationRequest.setInterval(Utility.getPunchingInterval(this));
+        mLocationRequest.setInterval(Constants.LOCATION_INTERVAL);
         mLocationRequest.setFastestInterval(Constants.FASTEST_LOCATION_INTERVAL);
         mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
         return mLocationRequest;
@@ -224,4 +272,36 @@ public class LocationMonitoringService extends Service implements
             Log.e(Constants.TAG, failedMsg);
         }
     }
+
+
+    /**
+     * setup alarm to invoke {@link LocationUpdatesRequester} to frequently request updates
+     */
+//    private void configureLocationUpdateRequesterAlarm() {
+//        Intent intent = new Intent(LocationMonitoringService.this.getApplicationContext(), LocationUpdatesRequester.class);
+//        final PendingIntent pendingIntent = PendingIntent.getBroadcast(LocationMonitoringService.this.getApplicationContext(), LocationUpdatesRequester.REQUEST_CODE,
+//                intent, PendingIntent.FLAG_ONE_SHOT);
+//        AlarmManager alarmManager = (AlarmManager) LocationMonitoringService.this.getSystemService(Context.ALARM_SERVICE);
+//
+//        long punchingInterval = Utility.getPunchingInterval(LocationMonitoringService.this.getApplicationContext());
+//        long requestIntervals = (punchingInterval > Constants.LOCATION_INTERVAL) ? punchingInterval / 2 : punchingInterval;
+//        long alarmTime = System.currentTimeMillis() + requestIntervals;
+//        alarmManager.setRepeating(AlarmManager.RTC_WAKEUP, alarmTime, requestIntervals, pendingIntent);
+//        Utility.toastMsg(LocationMonitoringService.this.getApplicationContext(), "Location updates to server started.");
+//        Log.v(Constants.TAG, "Alarm scheduled for updating location to server : " + new Date(alarmTime).toString());
+//    }
+//
+//    // Local broadcast receiver to request location updates from location client
+//    public static class LocationUpdatesRequester extends BroadcastReceiver {
+//
+//        public static final int REQUEST_CODE = 1099;
+//
+//        public LocationUpdatesRequester() {
+//        }
+//
+//        @Override
+//        public void onReceive(Context context, Intent intent) {
+//
+//        }
+//    }
 }
