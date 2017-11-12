@@ -24,6 +24,8 @@ public class Constants {
     public static final String LAST_LONGITUDE = "lastLongitude";
     public static final String LAST_CAPTURED_TIME = "lastCapturedTime";
     public static final String EXTRA_FETCH_TIME = "extra_fetch_time";
+    public static final String PUNCHING_INTERVAL_KEY = "punchingIntervalKey";
+    public static final String ATTENDANCE_REGISTERED_MSG = "Attendance registered at %s. \n Loc: (%s,%s)";
 
     public static final String PUNCH_STATUS = "punchStatus";
     public static final String PUNCHED_IN = "punchedIn";
@@ -34,5 +36,7 @@ public class Constants {
     public static final String REGISTER_ATTENDANCE_ENDPOINT = "/registerAttendance";
 
     public static final long FASTEST_LOCATION_INTERVAL = 30 * 1000;
-    public static final long LOCATION_INTERVAL = 60 * 1000;
+    public static final long LOCATION_INTERVAL = 60 * 1000; // default location interval 1 min
+    public static final long MIN_PUNCH_INTERVAL = LOCATION_INTERVAL; // minimum punch interval set to default
+    public static final long MAX_PUNCH_INTERVAL = 60 * 60 * 1000; // max punch interval set to 1 hr
 }

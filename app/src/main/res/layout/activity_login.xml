@@ -11,84 +11,90 @@
     android:paddingTop="@dimen/activity_vertical_margin"
     tools:context="com.ms.app.attendancemgmt.activitiy.LoginActivity">
 
-    <ProgressBar
-        android:id="@+id/login_progress"
-        style="?android:attr/progressBarStyleLarge"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_gravity="center"
-        android:layout_marginBottom="8dp"
-        android:visibility="gone" />
-
-    <LinearLayout
-        android:id="@+id/full_login_form"
+    <ScrollView
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:orientation="vertical">
-
-
-        <!--<ScrollView-->
-        <!--android:id="@+id/full_login_form"-->
-        <!--android:layout_width="match_parent"-->
-        <!--android:layout_height="match_parent">-->
+        android:layout_height="match_parent">
 
         <LinearLayout
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:layout_gravity="center"
-            android:orientation="vertical">
-
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="40sp" />
-
-            <ImageView
-                android:id="@+id/logo"
-                android:layout_width="120dp"
-                android:layout_height="120dp"
-                android:layout_gravity="center"
-                android:src="@mipmap/location_icon" />
-
-        </LinearLayout>
-
-        <LinearLayout
-            android:id="@+id/pin_login_form"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_gravity="center_vertical"
             android:orientation="vertical">
 
-            <View
-                android:layout_width="match_parent"
-                android:layout_height="60sp" />
+            <ProgressBar
+                android:id="@+id/login_progress"
+                style="?android:attr/progressBarStyleLarge"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_gravity="center"
+                android:layout_marginBottom="8dp"
+                android:visibility="gone" />
 
-            <android.support.design.widget.TextInputLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content">
-
-                <EditText
-                    android:id="@+id/pin"
-                    android:layout_width="match_parent"
-                    android:layout_height="wrap_content"
-                    android:hint="@string/prompt_pin"
-                    android:inputType="numberPassword"
-                    android:maxLines="1" />
-
-            </android.support.design.widget.TextInputLayout>
-
-            <Button
-                android:id="@+id/btnLogin"
+            <LinearLayout
+                android:id="@+id/full_login_form"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:layout_marginTop="20dp"
-                android:background="@color/colorBlue"
-                android:text="@string/action_login"
-                android:textAllCaps="false"
-                android:textColor="@color/colorWhite"
-                android:textSize="18sp"
-                android:textStyle="normal" />
+                android:orientation="vertical">
 
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center"
+                    android:orientation="vertical">
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="40sp" />
+
+                    <ImageView
+                        android:id="@+id/logo"
+                        android:layout_width="120dp"
+                        android:layout_height="120dp"
+                        android:layout_gravity="center"
+                        android:src="@mipmap/location_icon" />
+
+                </LinearLayout>
+
+                <LinearLayout
+                    android:id="@+id/pin_login_form"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_gravity="center_vertical"
+                    android:orientation="vertical">
+
+                    <View
+                        android:layout_width="match_parent"
+                        android:layout_height="60sp" />
+
+                    <android.support.design.widget.TextInputLayout
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content">
+
+                        <EditText
+                            android:id="@+id/pin"
+                            android:layout_width="match_parent"
+                            android:layout_height="wrap_content"
+                            android:hint="@string/prompt_pin"
+                            android:inputType="numberPassword"
+                            android:maxLines="1"
+                            android:textAlignment="center"
+                            android:textSize="32sp" />
+
+                    </android.support.design.widget.TextInputLayout>
+
+                    <Button
+                        android:id="@+id/btnLogin"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="20dp"
+                        android:background="@color/colorBlue"
+                        android:text="@string/action_login"
+                        android:textAllCaps="false"
+                        android:textColor="@color/colorWhite"
+                        android:textSize="20sp"
+                        android:textStyle="normal" />
+
+                </LinearLayout>
+            </LinearLayout>
         </LinearLayout>
-    </LinearLayout>
-    <!--</ScrollView>-->
+    </ScrollView>
 </LinearLayout>

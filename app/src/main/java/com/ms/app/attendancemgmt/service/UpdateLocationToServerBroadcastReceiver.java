@@ -34,6 +34,8 @@ public class UpdateLocationToServerBroadcastReceiver extends BroadcastReceiver {
         String longitude = Utility.readFromSharedPref(context, LAST_LONGITUDE);
         String lastCapturedTime = Utility.readFromSharedPref(context, LAST_CAPTURED_TIME);
 
+        scheduleNextAlarm(context);
+
         if (StringUtils.isEmpty(latitude) || (Double.parseDouble(latitude) == 0.0)) {
             Log.e(Constants.TAG, "Not updating to server, last_latitude : " + latitude);
             return;
@@ -68,7 +70,6 @@ public class UpdateLocationToServerBroadcastReceiver extends BroadcastReceiver {
         updateAttendance.setContext(context);
         updateAttendance.register();
 //        FileHandler.writeAttendanceToFile(context, attendance);
-        scheduleNextAlarm(context);
     }
 
     private void scheduleNextAlarm(Context context) {
@@ -79,7 +80,7 @@ public class UpdateLocationToServerBroadcastReceiver extends BroadcastReceiver {
     public void handleRegisterAttendanceResponse(Response response, Attendance attendance) {
         boolean isSuccess = (null != response && response.message().equals(MSG_OK));
         String time = Utility.getTime();
-        String successMsg = String.format("Attendance registered at %s. \n Loc: (%s,%s)", time, attendance.getLon(), attendance.getLat());
+        String successMsg = String.format(Constants.ATTENDANCE_REGISTERED_MSG, time, attendance.getLon(), attendance.getLat());
         String failedMsg = "Registration failed.\nUnable to connect to service.";
         if (isSuccess) {
             Log.i(Constants.TAG, successMsg);

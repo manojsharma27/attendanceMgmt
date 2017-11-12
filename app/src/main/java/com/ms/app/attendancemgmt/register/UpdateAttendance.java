@@ -55,9 +55,8 @@ public class UpdateAttendance {
         @Override
         protected Response doInBackground(Attendance... attendances) {
             if (!ArrayUtils.isEmpty(attendances)) {
-                ObjectMapper om = new ObjectMapper();
                 try {
-                    String json = om.writeValueAsString(attendances[0]);
+                    String json = Utility.getObjectMapper().writeValueAsString(attendances[0]);
                     String finalUrl = Utility.getServiceUrl(context) + Constants.REGISTER_ATTENDANCE_ENDPOINT;
                     OkHttpClient client = new OkHttpClient();
                     RequestBody body = RequestBody.create(MediaType.parse("application/json"), json);
@@ -67,16 +66,14 @@ public class UpdateAttendance {
                             .post(body)
                             .build();
 
-//                    TODO: uncomment following for actual service call
-//                    return client.newCall(request).execute();
-                    Thread.sleep(1000);
-//                    TODO: remove following after integration with actual service
-                    return new Response.Builder()
-                            .message(Constants.MSG_OK)
-                            .request(request)
-                            .protocol(Protocol.HTTP_1_0)
-                            .code(HttpURLConnection.HTTP_OK)
-                            .build();
+                    return client.newCall(request).execute();
+//                    Thread.sleep(1000);
+//                    return new Response.Builder()
+//                            .message(Constants.MSG_OK)
+//                            .request(request)
+//                            .protocol(Protocol.HTTP_1_0)
+//                            .code(HttpURLConnection.HTTP_OK)
+//                            .build();
                 } catch (Exception e) {
                     Log.e(Constants.TAG, "Exception while registering attendance. ", e);
                 }

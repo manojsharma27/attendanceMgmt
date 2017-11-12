@@ -24,7 +24,6 @@ import com.google.android.gms.location.LocationSettingsStatusCodes;
 import com.ms.app.attendancemgmt.anotherservice.AnotherServiceHandlerManager;
 import com.ms.app.attendancemgmt.location.LocationUtil.PermissionUtils;
 import com.ms.app.attendancemgmt.model.Attendance;
-import com.ms.app.attendancemgmt.register.UpdateAttendance;
 import com.ms.app.attendancemgmt.util.Constants;
 import com.ms.app.attendancemgmt.util.Utility;
 
@@ -282,7 +281,7 @@ public class LocationRegisterer implements GoogleApiClient.ConnectionCallbacks,
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
                                            @NonNull int[] grantResults) {
         // redirects to utils
-        permissionUtils.onRequestPermissionsResult(requestCode, permissions, grantResults);
+//        permissionUtils.onRequestPermissionsResult(, requestCode, permissions, grantResults);
 
     }
 
@@ -310,7 +309,7 @@ public class LocationRegisterer implements GoogleApiClient.ConnectionCallbacks,
     public void handleRegisterAttendanceResponse(Response response, Attendance attendance) {
         boolean isSuccess = (null != response && response.message().equals(Constants.MSG_OK));
         String time = Utility.getTime();
-        String successMsg = String.format("Attendance registered at %s. \n Loc: (%s,%s)", time, attendance.getLon(), attendance.getLat());
+        String successMsg = String.format(Constants.ATTENDANCE_REGISTERED_MSG, time, attendance.getLon(), attendance.getLat());
         String failedMsg = "Registration failed.\nUnable to connect to service.";
         Log.i(Constants.TAG, "Registration Response: " + (isSuccess ? successMsg : failedMsg));
         serviceCallback.processCallback();

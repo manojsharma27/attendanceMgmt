@@ -95,7 +95,7 @@ public class LocationMonitoringService extends Service implements
 
     private LocationRequest getLocationRequest() {
         LocationRequest mLocationRequest = new LocationRequest();
-        mLocationRequest.setInterval(Constants.LOCATION_INTERVAL);
+        mLocationRequest.setInterval(Utility.getPunchingInterval(this));
         mLocationRequest.setFastestInterval(Constants.FASTEST_LOCATION_INTERVAL);
         mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
         return mLocationRequest;
@@ -122,6 +122,13 @@ public class LocationMonitoringService extends Service implements
     @Override
     public void onConnectionFailed(ConnectionResult connectionResult) {
         Log.d(TAG, "Failed to connect to Google API");
+    }
 
+    @Override
+    public void onDestroy() {
+        if (null != mLocationClient) {
+            mLocationClient.disconnect();
+        }
+        super.onDestroy();
     }
 }

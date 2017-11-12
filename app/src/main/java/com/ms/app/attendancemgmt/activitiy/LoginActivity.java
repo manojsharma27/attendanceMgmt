@@ -3,6 +3,7 @@ package com.ms.app.attendancemgmt.activitiy;
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.annotation.TargetApi;
+import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -31,7 +32,9 @@ import android.widget.TextView;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ms.app.attendancemgmt.R;
+import com.ms.app.attendancemgmt.model.LoginResponse;
 import com.ms.app.attendancemgmt.util.Constants;
+import com.ms.app.attendancemgmt.util.MasterPinValidateCallback;
 import com.ms.app.attendancemgmt.util.Utility;
 
 import org.apache.commons.lang3.StringUtils;
@@ -135,6 +138,8 @@ public class LoginActivity extends AppCompatActivity {
             if (checkInternetConnected()) {
                 mAuthTask = new UserLoginTask(pin);
                 mAuthTask.execute((Void) null);
+            } else {
+                showProgress(false);
             }
         }
     }
@@ -195,8 +200,8 @@ public class LoginActivity extends AppCompatActivity {
         @Override
         protected Boolean doInBackground(Void... params) {
             //TODO : remove me for sure *********************************************************************************
-            if (true)
-                return testDoInBkg();
+//            if (true)
+//                return testDoInBkg();
 
             Response response = null;
             try {
@@ -216,16 +221,12 @@ public class LoginActivity extends AppCompatActivity {
                 return false;
             }
 
-            //TODO : replace parsing logic with actual one for sure *********************************************************************************
-//            String respStr = "{\"Status\":\"Success\",\"Message\":\"David Patterson\"}";
-            ObjectMapper objectMapper = new ObjectMapper();
             try {
                 String respStr = response.body().string();
-                JsonNode respNode = objectMapper.readTree(respStr);
-                JsonNode statusNode = respNode.get("status");
-                if (null != statusNode && statusNode.asText().equals("Success")) {
-                    empName = respNode.get("name").asText();
-                    empId = respNode.get("empid").asText();
+                LoginResponse loginResp = Utility.getObjectMapper().readValue(respStr, LoginResponse.class);
+                if (null != loginResp && "Success".equals(loginResp.getStatus()) && !loginResp.getEmpId().equals("0")) {
+                    empId = loginResp.getEmpId();
+                    empName = loginResp.getMessage();
                     PreferenceManager.getDefaultSharedPreferences(getApplicationContext()).edit().putString(Constants.EMP_ID, empId).apply();
                     return true;
                 }
@@ -245,10 +246,6 @@ public class LoginActivity extends AppCompatActivity {
                 PreferenceManager.getDefaultSharedPreferences(getApplicationContext()).edit().putString(Constants.EMP_ID, empId).apply();
                 return true;
             } catch (InterruptedException e) {
-            }
-
-            if (true) {
-                return false;
             }
             return false;
         }
@@ -292,7 +289,13 @@ public class LoginActivity extends AppCompatActivity {
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
             case R.id.mitemSetService:
-                loadGetMasterPinDialog();
+                MasterPinValidateCallback callback = new MasterPinValidateCallback() {
+                    @Override
+                    public void processMasterPinCallback(Activity activity) {
+                        loadSetServiceUrlDialog();
+                    }
+                };
+                Utility.loadGetMasterPinDialog(LoginActivity.this, callback);
                 return true;
         }
         return super.onOptionsItemSelected(item);
@@ -305,45 +308,9 @@ public class LoginActivity extends AppCompatActivity {
 
         if (null == activeNetworkInfo || !activeNetworkInfo.isConnected()) {
             Utility.showMessageDialog(LoginActivity.this, "No Internet Connection !", R.mipmap.img_sad_smiley);
-
             return false;
         }
         return Utility.ableToAccessInternet(2 * 1000);
-    }
-
-
-    private void loadGetMasterPinDialog() {
-        AlertDialog.Builder dialogMasterPin = new AlertDialog.Builder(
-                LoginActivity.this);
-        dialogMasterPin.setTitle("Master Pin");
-        final EditText txtMasterPin = new EditText(LoginActivity.this);
-        txtMasterPin.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_VARIATION_PASSWORD);
-
-        dialogMasterPin.setView(txtMasterPin);
-        dialogMasterPin.setPositiveButton("Next",
-                new DialogInterface.OnClickListener() {
-                    public void onClick(DialogInterface dialog, int whichButton) {
-                        String value = txtMasterPin.getText().toString().trim();
-                        if (value.isEmpty()
-                                || !value.equals(Constants.MASTER_PIN)) {
-                            Utility.toastMsg(getApplicationContext(),
-                                    "Invalid Master Pin.");
-                            Utility.showMessageDialog(LoginActivity.this,
-                                    "Invalid Master Pin.", R.mipmap.wrong);
-                            return;
-                        }
-                        dialog.cancel();
-                        LoginActivity.this.loadSetServiceUrlDialog();
-                    }
-                });
-
-        dialogMasterPin.setNegativeButton("Cancel",
-                new DialogInterface.OnClickListener() {
-                    public void onClick(DialogInterface dialog, int whichButton) {
-                        dialog.cancel();
-                    }
-                });
-        dialogMasterPin.show();
     }
 
     protected void loadSetServiceUrlDialog() {
@@ -351,8 +318,9 @@ public class LoginActivity extends AppCompatActivity {
                 LoginActivity.this);
         dialogSetService.setTitle("Service Address");
         final EditText txtUrl = new EditText(LoginActivity.this);
-        String prevServiceUrl = Utility.readFromSharedPref(LoginActivity.this, Constants.SERVICE_URL_PREF_KEY);
-        txtUrl.setText(prevServiceUrl);
+        String prevServiceUrl = Utility.getServiceUrl(LoginActivity.this); //readFromSharedPref(LoginActivity.this, Constants.SERVICE_URL_PREF_KEY);
+        txtUrl.setText(StringUtils.isBlank(prevServiceUrl) ? "" : prevServiceUrl);
+        txtUrl.setLayoutParams(Utility.getLayoutParamsForDialogMsgText());
         dialogSetService.setView(txtUrl);
         dialogSetService.setPositiveButton("Update",
                 new DialogInterface.OnClickListener() {

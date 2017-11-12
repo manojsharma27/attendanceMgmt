@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">PunchMe</string>
+    <string name="app_name">PunchIt</string>
 
     <!-- Strings related to login -->
     <string name="prompt_pin">PIN</string>

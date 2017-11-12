@@ -214,7 +214,7 @@ public class LocationHelper implements PermissionUtils.PermissionResultCallback{
      */
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults)
     {
-       permissionUtils.onRequestPermissionsResult(requestCode,permissions,grantResults);
+//       permissionUtils.onRequestPermissionsResult(, requestCode, permissions, grantResults);
     }
 
     /**

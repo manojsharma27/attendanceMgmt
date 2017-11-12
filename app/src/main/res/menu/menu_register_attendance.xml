@@ -8,12 +8,6 @@
         android:visible="true" />
 
     <item
-        android:id="@+id/mitemStartAutoUpdates"
-        android:enabled="true"
-        android:title="Auto Register"
-        android:visible="true" />
-
-    <item
         android:id="@+id/mitemStopAutoUpdates"
         android:enabled="true"
         android:title="Stop Registering"
@@ -21,12 +15,20 @@
 
     <item
         android:id="@+id/mitemReadStoredLocations"
-        android:title="View Stored Locations" />
+        android:enabled="true"
+        android:title="View Stored Locations"
+        android:visible="false"/>
 
     <item
         android:id="@+id/mitemCleanLocations"
         android:enabled="true"
         android:title="Clean Locations"
+        android:visible="false" />
+
+    <item
+        android:id="@+id/mitemLocUpdateInterval"
+        android:enabled="true"
+        android:title="Punch Interval"
         android:visible="true" />
 
 </menu>

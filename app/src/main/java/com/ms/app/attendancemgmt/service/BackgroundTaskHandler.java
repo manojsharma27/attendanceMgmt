@@ -27,7 +27,7 @@ public class BackgroundTaskHandler {
         final PendingIntent pendingIntent = PendingIntent.getBroadcast(context.getApplicationContext(), UpdateLocationToServerBroadcastReceiver.REQUEST_CODE,
                 intent, PendingIntent.FLAG_ONE_SHOT);
         AlarmManager alarmManager = (AlarmManager) context.getSystemService(Context.ALARM_SERVICE);
-        long alarmTime = System.currentTimeMillis() + Constants.LOCATION_INTERVAL;
+        long alarmTime = System.currentTimeMillis() + Utility.getPunchingInterval(context);
         alarmManager.setExact(AlarmManager.RTC_WAKEUP, alarmTime, pendingIntent);
         Utility.toastMsg(context.getApplicationContext(), "Location updates to server started.");
         Log.v(Constants.TAG, "Alarm scheduled for updating location to server : " + new Date(alarmTime).toString());
@@ -67,8 +67,8 @@ public class BackgroundTaskHandler {
             ActivityManager manager = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
             Intent intent = new Intent(context.getApplicationContext(), LocationMonitoringService.class);
             context.stopService(intent);
-            Utility.toastMsg(context.getApplicationContext(), "Stopped background location monitoring service");
-            Log.i(Constants.TAG, "Stopped background location monitoring service");
+            Utility.toastMsg(context.getApplicationContext(), "Background location updates to server stopped");
+            Log.i(Constants.TAG, "Background location monitoring service stopped");
         }
     }
 

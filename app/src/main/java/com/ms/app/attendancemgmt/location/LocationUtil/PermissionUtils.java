@@ -1,7 +1,7 @@
 package com.ms.app.attendancemgmt.location.LocationUtil;
 
 
-
+import android.Manifest;
 import android.app.Activity;
 import android.content.Context;
 import android.content.DialogInterface;
@@ -13,13 +13,15 @@ import android.support.v7.app.AlertDialog;
 import android.util.Log;
 import android.widget.Toast;
 
+import com.ms.app.attendancemgmt.activitiy.RegisterAttendanceActivity;
+import com.ms.app.attendancemgmt.util.Utility;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 
 
-public class PermissionUtils
-{
+public class PermissionUtils {
 
     Context context;
     Activity current_activity;
@@ -27,28 +29,26 @@ public class PermissionUtils
     PermissionResultCallback permissionResultCallback;
 
 
-    ArrayList<String> permission_list=new ArrayList<>();
-    ArrayList<String> listPermissionsNeeded=new ArrayList<>();
+    ArrayList<String> permission_list = new ArrayList<>();
+    ArrayList<String> listPermissionsNeeded = new ArrayList<>();
 
-    String dialog_content="";
+    String dialog_content = "";
     int req_code;
 
-    public PermissionUtils(Context context)
-    {
-        this.context=context;
-        this.current_activity= (Activity) context;
+    public PermissionUtils(Context context) {
+        this.context = context;
+        this.current_activity = (Activity) context;
 
-        permissionResultCallback= (PermissionResultCallback) context;
+        permissionResultCallback = (PermissionResultCallback) context;
 
 
     }
 
-    public PermissionUtils(Context context, PermissionResultCallback callback)
-    {
-        this.context=context;
-        this.current_activity= (Activity) context;
+    public PermissionUtils(Context context, PermissionResultCallback callback) {
+        this.context = context;
+        this.current_activity = (Activity) context;
 
-        permissionResultCallback= callback;
+        permissionResultCallback = callback;
 
 
     }
@@ -62,23 +62,18 @@ public class PermissionUtils
      * @param request_code
      */
 
-    public void check_permission(ArrayList<String> permissions, String dialog_content, int request_code)
-    {
-        this.permission_list=permissions;
-        this.dialog_content=dialog_content;
-        this.req_code=request_code;
+    public void check_permission(ArrayList<String> permissions, String dialog_content, int request_code) {
+        this.permission_list = permissions;
+        this.dialog_content = dialog_content;
+        this.req_code = request_code;
 
-        if(Build.VERSION.SDK_INT >= 23)
-        {
-            if (checkAndRequestPermissions(permissions, request_code))
-            {
+        if (Build.VERSION.SDK_INT >= 23) {
+            if (checkAndRequestPermissions(permissions, request_code)) {
                 permissionResultCallback.PermissionGranted(request_code);
                 Log.i("all permissions", "granted");
                 Log.i("proceed", "to callback");
             }
-        }
-        else
-        {
+        } else {
             permissionResultCallback.PermissionGranted(request_code);
 
             Log.i("all permissions", "granted");
@@ -96,15 +91,13 @@ public class PermissionUtils
      * @return
      */
 
-    private  boolean checkAndRequestPermissions(ArrayList<String> permissions, int request_code) {
+    private boolean checkAndRequestPermissions(ArrayList<String> permissions, int request_code) {
 
-        if(permissions.size()>0)
-        {
+        if (permissions.size() > 0) {
             listPermissionsNeeded = new ArrayList<>();
 
-            for(int i=0;i<permissions.size();i++)
-            {
-                int hasPermission = ContextCompat.checkSelfPermission(current_activity,permissions.get(i));
+            for (int i = 0; i < permissions.size(); i++) {
+                int hasPermission = ContextCompat.checkSelfPermission(current_activity, permissions.get(i));
 
                 if (hasPermission != PackageManager.PERMISSION_GRANTED) {
                     listPermissionsNeeded.add(permissions.get(i));
@@ -112,9 +105,8 @@ public class PermissionUtils
 
             }
 
-            if (!listPermissionsNeeded.isEmpty())
-            {
-                ActivityCompat.requestPermissions(current_activity, listPermissionsNeeded.toArray(new String[listPermissionsNeeded.size()]),request_code);
+            if (!listPermissionsNeeded.isEmpty()) {
+                ActivityCompat.requestPermissions(current_activity, listPermissionsNeeded.toArray(new String[listPermissionsNeeded.size()]), request_code);
                 return false;
             }
         }
@@ -123,37 +115,35 @@ public class PermissionUtils
     }
 
     /**
-     *
-     *
+     * @param activity
      * @param requestCode
      * @param permissions
      * @param grantResults
      */
-    public void onRequestPermissionsResult(int requestCode, String permissions[], int[] grantResults)
-    {
-        switch (requestCode)
-        {
+    public void onRequestPermissionsResult(Activity activity, int requestCode, String[] permissions, int[] grantResults) {
+        switch (requestCode) {
             case 1:
-                if(grantResults.length>0)
-                {
+                if (grantResults.length > 0) {
                     Map<String, Integer> perms = new HashMap<>();
 
-                    for (int i = 0; i < permissions.length; i++)
-                    {
+                    for (int i = 0; i < permissions.length; i++) {
                         perms.put(permissions[i], grantResults[i]);
                     }
 
-                    final ArrayList<String> pending_permissions=new ArrayList<>();
+                    final ArrayList<String> pending_permissions = new ArrayList<>();
 
-                    for (int i = 0; i < listPermissionsNeeded.size(); i++)
-                    {
-                        if (perms.get(listPermissionsNeeded.get(i)) != PackageManager.PERMISSION_GRANTED)
-                        {
-                            if(ActivityCompat.shouldShowRequestPermissionRationale(current_activity,listPermissionsNeeded.get(i)))
+                    for (int i = 0; i < listPermissionsNeeded.size(); i++) {
+                        if (perms.get(listPermissionsNeeded.get(i)) != PackageManager.PERMISSION_GRANTED) {
+                            if (ActivityCompat.shouldShowRequestPermissionRationale(current_activity, listPermissionsNeeded.get(i)))
                                 pending_permissions.add(listPermissionsNeeded.get(i));
-                            else
-                            {
-                                Log.i("Go to settings","and enable permissions");
+                            else {
+                                // open location settings page to allow user to turn on GPS
+                                if (listPermissionsNeeded.get(i).equals(Manifest.permission.ACCESS_COARSE_LOCATION) ||
+                                        listPermissionsNeeded.get(i).equals(Manifest.permission.ACCESS_FINE_LOCATION)) {
+                                    Utility.showGpsNotEnabledDialog(activity);
+                                    return;
+                                }
+                                Log.i("Go to settings", "and enable permissions");
                                 permissionResultCallback.NeverAskAgain(req_code);
                                 Toast.makeText(current_activity, "Go to settings and enable permissions", Toast.LENGTH_LONG).show();
                                 return;
@@ -162,8 +152,7 @@ public class PermissionUtils
 
                     }
 
-                    if(pending_permissions.size()>0)
-                    {
+                    if (pending_permissions.size() > 0) {
                         showMessageOKCancel(dialog_content,
                                 new DialogInterface.OnClickListener() {
                                     @Override
@@ -171,14 +160,14 @@ public class PermissionUtils
 
                                         switch (which) {
                                             case DialogInterface.BUTTON_POSITIVE:
-                                                check_permission(permission_list,dialog_content,req_code);
+                                                check_permission(permission_list, dialog_content, req_code);
                                                 break;
                                             case DialogInterface.BUTTON_NEGATIVE:
-                                                Log.i("permisson","not fully given");
-                                                if(permission_list.size()==pending_permissions.size())
+                                                Log.i("permisson", "not fully given");
+                                                if (permission_list.size() == pending_permissions.size())
                                                     permissionResultCallback.PermissionDenied(req_code);
                                                 else
-                                                    permissionResultCallback.PartialPermissionGranted(req_code,pending_permissions);
+                                                    permissionResultCallback.PartialPermissionGranted(req_code, pending_permissions);
                                                 break;
                                         }
 
@@ -186,15 +175,12 @@ public class PermissionUtils
                                     }
                                 });
 
-                    }
-                    else
-                    {
-                        Log.i("all","permissions granted");
-                        Log.i("proceed","to next step");
+                    } else {
+                        Log.i("all", "permissions granted");
+                        Log.i("proceed", "to next step");
                         permissionResultCallback.PermissionGranted(req_code);
 
                     }
-
 
 
                 }
@@ -218,11 +204,13 @@ public class PermissionUtils
                 .show();
     }
 
-    public interface PermissionResultCallback
-    {
+    public interface PermissionResultCallback {
         void PermissionGranted(int request_code);
+
         void PartialPermissionGranted(int request_code, ArrayList<String> granted_permissions);
+
         void PermissionDenied(int request_code);
+
         void NeverAskAgain(int request_code);
     }
 }

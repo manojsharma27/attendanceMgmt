@@ -353,7 +353,7 @@ public class MyLocationUsingLocationAPI extends AppCompatActivity implements Con
     public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions,
                                            @NonNull int[] grantResults) {
         // redirects to utils
-        permissionUtils.onRequestPermissionsResult(requestCode, permissions, grantResults);
+//        permissionUtils.onRequestPermissionsResult(, requestCode, permissions, grantResults);
 
     }
 
