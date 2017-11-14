@@ -26,7 +26,6 @@ public class TempActivity extends AppCompatActivity {
         btnStartServ.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-//                startService(new Intent(getApplicationContext(), ServiceMgr.class));
                 scheduleAlarm();
                 Utility.toastMsg(getApplicationContext(), "Service started.");
             }
@@ -36,7 +35,6 @@ public class TempActivity extends AppCompatActivity {
         btnStopServ.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-//                stopService(new Intent(getApplicationContext(), ServiceMgr.class));
                 cancelAlarm();
                 Utility.toastMsg(getApplicationContext(), "Service stopped.");
             }
@@ -46,7 +44,6 @@ public class TempActivity extends AppCompatActivity {
 
     // Setup a recurring alarm every half hour
     public void scheduleAlarm() {
-//        PreferenceManager.getDefaultSharedPreferences(getApplicationContext()).edit().putLong("REPEAT_COUNT", 0).apply();
         Utility.writePref(getApplicationContext(), "REPEAT_COUNT", String.valueOf(0));
         // Construct an intent that will execute the AlarmReceiver
         Intent intent = new Intent(getApplicationContext(), MyAlarmReceiver.class);

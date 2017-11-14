@@ -44,14 +44,11 @@ import okhttp3.Request;
 import okhttp3.Response;
 
 /**
- * A login screen that offers login via email/password.
+ * A login screen that offers login via pin
  */
 public class LoginActivity extends AppCompatActivity {
 
     private static final int LOGIN_DELAY = 1000;
-    /**
-     * Keep track of the login task to ensure we can cancel it if requested.
-     */
     private UserLoginTask mAuthTask = null;
 
     // UI references.
@@ -66,11 +63,11 @@ public class LoginActivity extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
 
-        if (Utility.isLocationServiceStarted(this.getApplicationContext())) {
+        // Open register attendance activity directly if user already punched in
+        if (Utility.isPunchedIn(getApplicationContext())) {
             empId = Utility.readPref(this.getApplicationContext(), Constants.EMP_ID);
             empName = Utility.readPref(this.getApplicationContext(), Constants.EMP_NAME);
             loadRegisterAttendanceActivity();
-            finish();
         }
 
         txtPin = findViewById(R.id.pin);
@@ -221,7 +218,7 @@ public class LoginActivity extends AppCompatActivity {
                 Log.e(Constants.TAG, "Exception while authenticating pin. ", e);
             }
             if (null == response || !response.isSuccessful()) {
-                errorMsg = "Failed to connect to internet.";
+                errorMsg = "Failed to connect to service.";
                 return false;
             }
 
@@ -232,7 +229,6 @@ public class LoginActivity extends AppCompatActivity {
                     empId = loginResp.getEmpId();
                     empName = loginResp.getMessage();
                     Utility.writePref(getApplicationContext(), Constants.EMP_ID, empId);
-//                    PreferenceManager.getDefaultSharedPreferences(getApplicationContext()).edit().putString(Constants.EMP_ID, empId).apply();
                     return true;
                 }
             } catch (IOException e) {
@@ -249,7 +245,6 @@ public class LoginActivity extends AppCompatActivity {
                 empId = "9898";
                 empName = "manoj";
                 Utility.writePref(getApplicationContext(), Constants.EMP_ID, empId);
-//                PreferenceManager.getDefaultSharedPreferences(getApplicationContext()).edit().putString(Constants.EMP_ID, empId).apply();
                 return true;
             } catch (InterruptedException e) {
             }
@@ -310,7 +305,7 @@ public class LoginActivity extends AppCompatActivity {
     protected void loadSetServiceUrlDialog() {
         AlertDialog.Builder dialogSetService = new AlertDialog.Builder(
                 LoginActivity.this);
-        dialogSetService.setTitle("Service Address");
+        dialogSetService.setTitle("Service Url");
         final EditText txtUrl = new EditText(LoginActivity.this);
         String prevServiceUrl = Utility.getServiceUrl(LoginActivity.this); //readPref(LoginActivity.this, Constants.SERVICE_URL_PREF_KEY);
         txtUrl.setText(StringUtils.isBlank(prevServiceUrl) ? "" : prevServiceUrl);
@@ -321,21 +316,24 @@ public class LoginActivity extends AppCompatActivity {
                     public void onClick(DialogInterface dialog, int whichButton) {
                         String value = txtUrl.getText().toString().trim();
                         if (value.isEmpty() || !value.startsWith("http")) {
-                            Utility.toastMsg(getApplicationContext(),
-                                    "Invalid URL entered.");
                             Utility.showMessageDialog(LoginActivity.this,
                                     "Invalid URL entered.", R.mipmap.wrong);
                             return;
                         }
+                        if (value.endsWith("/") || value.endsWith("\\")) {
+                            Utility.showMessageDialog(LoginActivity.this,
+                                    "URL should not end with '/' or '\\'.", R.mipmap.wrong);
+                            return;
+                        }
+
                         Utility.writePref(getApplicationContext(),
                                 Constants.SERVICE_URL_PREF_KEY, value);
                         Utility.toastMsg(
                                 getApplicationContext(),
-                                "Service address updated.\n"
-                                        + Utility.getServiceUrl(getApplicationContext()));
+                                "Service URL updated.");
                         Utility.showMessageDialog(
                                 LoginActivity.this,
-                                "Service address updated.\n"
+                                "Service URL updated.\n"
                                         + Utility.getServiceUrl(getApplicationContext()),
                                 R.mipmap.right);
                     }

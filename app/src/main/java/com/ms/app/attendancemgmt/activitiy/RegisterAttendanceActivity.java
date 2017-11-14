@@ -6,7 +6,6 @@ import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.content.IntentFilter;
 import android.content.IntentSender;
 import android.content.pm.PackageManager;
 import android.location.Location;
@@ -47,8 +46,6 @@ import com.ms.app.attendancemgmt.register.ServerUpdateResponseHandler;
 import com.ms.app.attendancemgmt.register.UpdateAttendance;
 import com.ms.app.attendancemgmt.service.BackgroundTaskHandler;
 import com.ms.app.attendancemgmt.service.FileHandler;
-import com.ms.app.attendancemgmt.service.LocationMonitoringService;
-import com.ms.app.attendancemgmt.service.UpdateLocationToServerBroadcastReceiver;
 import com.ms.app.attendancemgmt.util.Constants;
 import com.ms.app.attendancemgmt.util.MasterPinValidateCallback;
 import com.ms.app.attendancemgmt.util.Utility;
@@ -61,8 +58,6 @@ import java.util.Date;
 import java.util.List;
 
 import okhttp3.Response;
-
-import static com.ms.app.attendancemgmt.util.Constants.MSG_OK;
 
 public class RegisterAttendanceActivity extends AppCompatActivity implements GoogleApiClient.ConnectionCallbacks,
         GoogleApiClient.OnConnectionFailedListener, ActivityCompat.OnRequestPermissionsResultCallback,
@@ -87,14 +82,12 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
     private Location mLastLocation;
 
     // Google client to interact with Google API
-
     private GoogleApiClient mGoogleApiClient;
 
     double latitude;
     double longitude;
 
     // list of permissions
-
     ArrayList<String> permissions = new ArrayList<>();
     PermissionUtils permissionUtils;
 
@@ -122,7 +115,7 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
         rlRegAttend.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if (isPunchedIn()) {
+                if (Utility.isPunchedIn(getApplicationContext())) {
                     doPunchOut();
                 } else {
                     doRegistration(Utility.readPref(context, Constants.EMP_ID)); // instant location updates when punchIn clicked.
@@ -133,7 +126,7 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
                 }
             }
         });
-        updatePunchUI(!isPunchedIn());
+        updatePunchUI(!Utility.isPunchedIn(getApplicationContext()));
         setupPermissionUtils();
         if (checkPlayServices()) {
             buildGoogleApiClient();
@@ -160,7 +153,6 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        final LocationSettingsStates states = LocationSettingsStates.fromIntent(data);
         switch (requestCode) {
             case REQUEST_CHECK_SETTINGS:
                 switch (resultCode) {
@@ -189,7 +181,7 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
 
     @Override
     public void onConnectionSuspended(int arg0) {
-//        mGoogleApiClient.connect();
+        mGoogleApiClient.connect();
     }
 
     // Permission check functions
@@ -281,6 +273,7 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
     }
 
     private void doRegistration(String empId) {
+        checkAndRequestDeviceIdPermission();
         getLocation();
         if (mLastLocation != null) {
             latitude = mLastLocation.getLatitude();
@@ -289,7 +282,6 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
             Utility.toastMsg(context, "Couldn't get the location. Make sure location is enabled on the device");
             return;
         }
-        checkAndRequestDeviceIdPermission();
         registerAttendance(empId);
     }
 
@@ -368,11 +360,8 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
      */
 
     private boolean checkPlayServices() {
-
         GoogleApiAvailability googleApiAvailability = GoogleApiAvailability.getInstance();
-
         int resultCode = googleApiAvailability.isGooglePlayServicesAvailable(this);
-
         if (resultCode != ConnectionResult.SUCCESS) {
             if (googleApiAvailability.isUserResolvableError(resultCode)) {
                 googleApiAvailability.getErrorDialog(this, resultCode,
@@ -436,25 +425,29 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
 
     @Override
     public void handleRegisterAttendanceResponse(Response response, Attendance attendance) {
-        boolean isSuccess = (null != response && response.message().equals(MSG_OK));
+        boolean isSuccess = (null != response && response.message().equals(Constants.MSG_OK));
         String time = Utility.getTime();
         String successMsg = String.format(Constants.ATTENDANCE_REGISTERED_MSG, time, attendance.getLon(), attendance.getLat());
         String failedMsg = "Registration failed.\nUnable to connect to service.";
         Utility.showMessageDialog(RegisterAttendanceActivity.this, isSuccess ? successMsg : failedMsg, isSuccess ? R.mipmap.right : R.mipmap.wrong);
         Utility.toastMsg(context, isSuccess ? successMsg : failedMsg);
+
+        if (!isSuccess) {
+            Log.i(Constants.TAG, "Failed to register to service, so recording in file.");
+            FileHandler.writeAttendanceToFile(this.getApplicationContext(), attendance);
+        }
     }
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
             case R.id.mitemLogout:
-                if (isPunchedIn()) {
+                if (Utility.isPunchedIn(getApplicationContext())) {
                     doPunchOut();
                 }
                 finish();
                 return true;
             case R.id.mitemStopAutoUpdates:
-//                backgroundTaskHandler.cancelUpdateLocationToServerAlarm();
                 backgroundTaskHandler.stopLocationMonitorService(this);
                 backgroundTaskHandler.stopLocationMonitoringService();
                 return true;
@@ -494,10 +487,10 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
 
     @Override
     public void onBackPressed() {
-        if (isPunchedIn()) {
+        if (Utility.isPunchedIn(getApplicationContext())) {
             if (exit) {
                 doPunchOut();
-                finish();
+                loadLoginActivityAndFinish();
             } else {
                 Utility.toastMsg(getApplicationContext(), "Press back again to Punch out and exit");
                 exit = true;
@@ -511,7 +504,15 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
             }
             return;
         }
+        loadLoginActivityAndFinish();
         super.onBackPressed();
+    }
+
+    private void loadLoginActivityAndFinish() {
+        Intent loginIntent = new Intent(this.getApplicationContext(), LoginActivity.class);
+        loginIntent.setFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_CLEAR_TOP);
+        startActivity(loginIntent);
+        finish();
     }
 
     public static void showOnBackPressedDialog(final Activity activity) {
@@ -537,23 +538,15 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
                 .show();
     }
 
-    private boolean isPunchedIn() {
-        String punchStatus = Utility.readPref(getApplicationContext(), Constants.PUNCH_STATUS);
-        return StringUtils.equals(Constants.PUNCHED_IN, punchStatus);
-    }
-
     private void doPunchIn() {
         backgroundTaskHandler.startLocationMonitorService(RegisterAttendanceActivity.this);
-//        backgroundTaskHandler.scheduleUpdateLocationToServerAlarm();
         Utility.writePref(getApplicationContext(), Constants.PUNCH_STATUS, Constants.PUNCHED_IN);
         // set to punch out
         updatePunchUI(false);
     }
 
     private void doPunchOut() {
-//        backgroundTaskHandler.cancelUpdateLocationToServerAlarm();
         backgroundTaskHandler.stopLocationMonitorService(RegisterAttendanceActivity.this);
-//        backgroundTaskHandler.stopLocationMonitoringService();
         Utility.writePref(getApplicationContext(), Constants.PUNCH_STATUS, Constants.PUNCHED_OUT);
         // set to punch in
         updatePunchUI(true);

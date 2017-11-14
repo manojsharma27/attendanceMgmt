@@ -16,7 +16,6 @@ public class Constants {
     public static final String SHARED_PREF_NAME = "com.ms.app.attendancemgmt_preferences";
     public static final String SERVICE_URL_PREF_KEY = "service_url";
     public static final String MASTER_PIN = "9009";
-    public static final String APP_TITLE = "Attendance Mgmt";
     public static final String MSG_OK = "OK";
     public static final String DATE_FORMAT = "yyyy-MM-dd'T'HH:mm:ss";
     public static final String SET_NEXT_ALARM = "setNextLocationUpdateAlarm";
@@ -49,4 +48,8 @@ public class Constants {
     public static final String STOPPED = "stopped";
     public static final String SERVICE_STATUS = "service_status";
 
+    public static final String STARTED_BY = "started_by";
+    public static final String ACTIVITY = "activity";
+    public static final String SELF = "self";
+    public static final long START_LOC_MONITOR_SERVICE_INTERVAL = 5 * 1000; // start location update service after 5 sec of service auto restart
 }

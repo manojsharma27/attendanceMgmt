@@ -54,7 +54,6 @@ import static com.ms.app.attendancemgmt.util.Constants.DATE_FORMAT;
 public class Utility {
 
     private static ObjectMapper objectMapper;
-    private static final List<String> DEFAULT_PREFS_KEYS = Arrays.asList(Constants.SERVICE_URL_PREF_KEY, Constants.PUNCHING_INTERVAL_KEY);
 
     public static String formatDate(String date) {
         SimpleDateFormat dateFormat = new SimpleDateFormat(DATE_FORMAT);
@@ -102,10 +101,6 @@ public class Utility {
         SharedPreferences.Editor editor = prefs.edit();
         editor.putString(key, value);
         editor.apply();
-
-//        if (DEFAULT_PREFS_KEYS.contains(key)) {
-//            PreferenceManager.getDefaultSharedPreferences(context).edit().putString(key, value).apply();
-//        }
     }
 
     public static String readPref(Context context, String key) {
@@ -126,7 +121,7 @@ public class Utility {
             View layout_Message_dialog = inflater.inflate(
                     R.layout.dialog_message, null);
             builder.setView(layout_Message_dialog);
-            builder.setTitle(Constants.APP_TITLE);
+            builder.setTitle(activity.getString(R.string.app_name));
             TextView text = layout_Message_dialog.findViewById(R.id.tvDialogMessage);
             text.setText(msg);
             ImageView image = layout_Message_dialog.findViewById(R.id.imgMessage);
@@ -153,7 +148,7 @@ public class Utility {
             View layout_Message_dialog = inflater.inflate(
                     R.layout.dialog_message, null);
             builder.setView(layout_Message_dialog);
-            builder.setTitle(Constants.APP_TITLE);
+            builder.setTitle(activity.getString(R.string.app_name));
             TextView text = layout_Message_dialog.findViewById(R.id.tvDialogMessage);
             text.setVerticalScrollBarEnabled(true);
             text.setHorizontalScrollBarEnabled(true);
@@ -176,7 +171,7 @@ public class Utility {
 
     public static void showGpsNotEnabledDialog(final Activity activity) {
         new AlertDialog.Builder(activity)
-                .setTitle("Alert:")
+                .setTitle(activity.getString(R.string.app_name))
                 .setMessage("GPS is not enabled. Would you like to enable it?")
                 .setCancelable(false)
                 .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
@@ -237,7 +232,7 @@ public class Utility {
     }
 
     public static String getServiceUrl(Context context) {
-        return readPref(context, Constants.SERVICE_URL_PREF_KEY); // PreferenceManager.getDefaultSharedPreferences(context).getString(Constants.SERVICE_URL_PREF_KEY, null);
+        return readPref(context, Constants.SERVICE_URL_PREF_KEY);
     }
 
     public static String getTime() {
@@ -253,12 +248,12 @@ public class Utility {
 
         if (null == activeNetworkInfo || !activeNetworkInfo.isConnected()) {
             if (context instanceof Activity) {
-                Utility.showMessageDialog((Activity)context, "No Internet Connection !", R.mipmap.img_sad_smiley);
+                Utility.showMessageDialog((Activity) context, "No Internet Connection !", R.mipmap.img_sad_smiley);
             }
             Log.e(Constants.TAG, "No internet connection.");
             return false;
         }
-        return Utility.ableToAccessInternet(2 * 1000);
+        return true; // Utility.ableToAccessInternet(2 * 1000);
     }
 
     public static boolean ableToAccessInternet(int timeOutInMillis) {
@@ -284,16 +279,21 @@ public class Utility {
     }
 
     public static long getPunchingInterval(Context context) {
-        String punchInterval = readPref(context, Constants.PUNCHING_INTERVAL_KEY); // PreferenceManager.getDefaultSharedPreferences(context).getString(Constants.PUNCHING_INTERVAL_KEY, String.valueOf(Constants.MIN_PUNCH_INTERVAL));
+        String punchInterval = readPref(context, Constants.PUNCHING_INTERVAL_KEY);
         return (StringUtils.isEmpty(punchInterval) ? Constants.MIN_PUNCH_INTERVAL : Long.parseLong(punchInterval));
     }
 
-    public static void updateLocationServiceStatus(Context context, String status) {
-        writePref(context, Constants.SERVICE_STATUS, status);
-    }
+//    public static void updateLocationServiceStatus(Context context, String status) {
+//        writePref(context, Constants.SERVICE_STATUS, status);
+//    }
+//
+//    public static boolean isLocationServiceStarted(Context context) {
+//        String status = readPref(context, Constants.SERVICE_STATUS);
+//        return StringUtils.equals(Constants.STARTED, status);
+//    }
 
-    public static boolean isLocationServiceStarted(Context context) {
-        String status = readPref(context, Constants.SERVICE_STATUS);
-        return StringUtils.equals(Constants.STARTED, status);
+    public static boolean isPunchedIn(Context context) {
+        String punchStatus = Utility.readPref(context, Constants.PUNCH_STATUS);
+        return StringUtils.equals(Constants.PUNCHED_IN, punchStatus);
     }
 }

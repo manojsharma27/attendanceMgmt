@@ -42,17 +42,13 @@ import com.ms.app.attendancemgmt.util.Utility;
 
 import org.apache.commons.lang3.StringUtils;
 
+import java.util.Arrays;
 import java.util.Date;
 import java.util.Timer;
 import java.util.TimerTask;
 
 import okhttp3.Response;
 
-import static com.ms.app.attendancemgmt.util.Constants.EXTRA_FETCH_TIME;
-import static com.ms.app.attendancemgmt.util.Constants.EXTRA_LATITUDE;
-import static com.ms.app.attendancemgmt.util.Constants.EXTRA_LONGITUDE;
-import static com.ms.app.attendancemgmt.util.Constants.MSG_OK;
-import static com.ms.app.attendancemgmt.util.Constants.TAG;
 
 public class LocationMonitoringService extends Service implements
         GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener,
@@ -68,9 +64,26 @@ public class LocationMonitoringService extends Service implements
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        createLocationClientAndConnect();
-        configureNotificationIntent(intent);
+        Log.i(Constants.TAG + this.getClass().getSimpleName(), "Inside onStartCommand");
+        if (null == intent) {
+            Utility.writePref(getApplicationContext(), Constants.PUNCH_STATUS, Constants.PUNCHED_IN);
+            Log.w(Constants.TAG, "Service was stopped and automatically restarted by the system.");
+            BackgroundTaskHandler.startLocationMonitorServiceBySelf(this, Constants.START_LOC_MONITOR_SERVICE_INTERVAL);
+            Log.w(Constants.TAG, "Stopped self. Restarting again via alarm.");
+            stopForeground(true);
+            stopSelf();
+        } else {
+            Utility.writePref(getApplicationContext(), Constants.PUNCH_STATUS, Constants.PUNCHED_IN);
+            createLocationClientAndConnect();
+            configureNotificationIntent(intent);
+        }
         return START_STICKY;
+    }
+
+    @Override
+    public void onCreate() {
+        Log.i(Constants.TAG, "Inside onCreate");
+        super.onCreate();
     }
 
     private void configureNotificationIntent(Intent intent) {
@@ -91,7 +104,7 @@ public class LocationMonitoringService extends Service implements
             Bitmap icon = BitmapFactory.decodeResource(getResources(), R.mipmap.location_icon);
 
             Notification notification = new Notification.Builder(this.getApplicationContext())
-                    .setContentTitle("PunchIt")
+                    .setContentTitle(getString(R.string.app_name))
                     .setContentText("Auto punching")
                     .setSmallIcon(R.mipmap.gps_icon)
                     .setLargeIcon(Bitmap.createScaledBitmap(icon, 100, 100, false))
@@ -102,7 +115,7 @@ public class LocationMonitoringService extends Service implements
             startForeground(NOTIFICATION_ID_FOREGROUND_SERVICE, notification);
             Utility.writePref(this.getApplicationContext(), Constants.LAST_UPDATE_TO_SERVER_TIME, String.valueOf(System.currentTimeMillis()));
             configureLocationUpdateRequesterTask();
-            Utility.updateLocationServiceStatus(LocationMonitoringService.this.getApplicationContext(), Constants.STARTED);
+//            Utility.updateLocationServiceStatus(LocationMonitoringService.this.getApplicationContext(), Constants.STARTED);
         } else if (action.equals(Constants.ACTION_STOP_FOREGROUND_LOCATION_SERVICE)) {
             Log.i(Constants.TAG, "Received Stop Foreground Intent");
             stopForeground(true);
@@ -119,7 +132,9 @@ public class LocationMonitoringService extends Service implements
             }
         };
         timer = new Timer();
-        timer.schedule(timerTask, Constants.FASTEST_LOCATION_INTERVAL, Constants.MIN_PUNCH_INTERVAL);
+        long punchInterval = Utility.getPunchingInterval(this.getApplicationContext());
+        long requestInterval = Math.max(punchInterval / 4, Constants.MIN_PUNCH_INTERVAL);
+        timer.schedule(timerTask, Constants.FASTEST_LOCATION_INTERVAL, requestInterval);
     }
 
     private void stopLocationUpdateRequesterTask() {
@@ -163,18 +178,17 @@ public class LocationMonitoringService extends Service implements
     @Override
     public void onConnected(Bundle dataBundle) {
         requestLocationUpdate();
-        Log.d(TAG, "Connected to Google API");
+        Log.d(Constants.TAG, "Connected to Google API");
     }
 
     private void requestLocationUpdate() {
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
                 ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
-            Log.d(TAG, "== Error On onConnected(). Permission not granted");
+            Log.d(Constants.TAG, "== Error On onConnected(). Permission not granted");
             return;
         }
         LocationServices.FusedLocationApi.flushLocations(mLocationClient);
         LocationServices.FusedLocationApi.requestLocationUpdates(mLocationClient, getLocationRequest(), this, Looper.getMainLooper());
-        Log.d(TAG, "Connected to Google API");
     }
 
     @Override
@@ -185,10 +199,8 @@ public class LocationMonitoringService extends Service implements
     @Override
     public void onLocationChanged(Location location) {
         if (location != null) {
-            Log.v(TAG, "location changed");
-            //Send result to activities
+            Log.v(Constants.TAG, "location changed");
             LocationModel locationModel = new LocationModel(location.getLatitude(), location.getLongitude());
-//            sendLocationUpdate(this, locationModel);
             boolean isPunchIntervalElapsed = checkPunchIntervalElapsed();
             if (isPunchIntervalElapsed) {
                 sendUpdatesToService(locationModel);
@@ -198,15 +210,16 @@ public class LocationMonitoringService extends Service implements
 
     @Override
     public void onConnectionFailed(ConnectionResult connectionResult) {
-        Log.d(TAG, "Failed to connect to Google API");
+        Log.d(Constants.TAG, "Failed to connect to Google API");
     }
 
     @Override
     public void onDestroy() {
+        Log.i(Constants.TAG, "Inside onDestroy");
         if (null != mLocationClient) {
             mLocationClient.disconnect();
         }
-        Utility.updateLocationServiceStatus(LocationMonitoringService.this.getApplicationContext(), Constants.STOPPED);
+        Utility.writePref(getApplicationContext(), Constants.PUNCH_STATUS, Constants.PUNCHED_OUT);
         super.onDestroy();
     }
 
@@ -242,27 +255,9 @@ public class LocationMonitoringService extends Service implements
         return mLocationRequest;
     }
 
-    private void sendMessageToUI(String lat, String lng) {
-        Log.d(TAG, "Sending info...");
-
-        Intent intent = new Intent(ACTION_LOCATION_BROADCAST);
-        intent.putExtra(EXTRA_LATITUDE, lat);
-        intent.putExtra(EXTRA_LONGITUDE, lng);
-        LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
-    }
-
-    private void sendLocationUpdate(Context context, LocationModel locationModel) {
-        Intent intent = new Intent(ACTION_LOCATION_BROADCAST);
-        intent.putExtra(EXTRA_LATITUDE, locationModel.getLatitude());
-        intent.putExtra(EXTRA_LONGITUDE, locationModel.getLongitude());
-        intent.putExtra(EXTRA_FETCH_TIME, locationModel.getLogTime());
-        context.sendBroadcast(intent);
-        Log.v(TAG, "broadcast msg sent...");
-    }
-
     @Override
     public void handleRegisterAttendanceResponse(Response response, Attendance attendance) {
-        boolean isSuccess = (null != response && response.message().equals(MSG_OK));
+        boolean isSuccess = (null != response && response.message().equals(Constants.MSG_OK));
         String time = Utility.getTime();
         String successMsg = String.format(Constants.ATTENDANCE_REGISTERED_MSG, time, attendance.getLon(), attendance.getLat());
         String failedMsg = "Registration failed.\nUnable to connect to service.";
@@ -270,38 +265,10 @@ public class LocationMonitoringService extends Service implements
             Log.i(Constants.TAG, successMsg);
         } else {
             Log.e(Constants.TAG, failedMsg);
+            // write location updates to file
+            FileHandler.writeAttendanceToFile(LocationMonitoringService.this.getApplicationContext(), attendance);
+            Log.i(Constants.TAG, "Recorded in file");
         }
     }
 
-
-    /**
-     * setup alarm to invoke {@link LocationUpdatesRequester} to frequently request updates
-     */
-//    private void configureLocationUpdateRequesterAlarm() {
-//        Intent intent = new Intent(LocationMonitoringService.this.getApplicationContext(), LocationUpdatesRequester.class);
-//        final PendingIntent pendingIntent = PendingIntent.getBroadcast(LocationMonitoringService.this.getApplicationContext(), LocationUpdatesRequester.REQUEST_CODE,
-//                intent, PendingIntent.FLAG_ONE_SHOT);
-//        AlarmManager alarmManager = (AlarmManager) LocationMonitoringService.this.getSystemService(Context.ALARM_SERVICE);
-//
-//        long punchingInterval = Utility.getPunchingInterval(LocationMonitoringService.this.getApplicationContext());
-//        long requestIntervals = (punchingInterval > Constants.LOCATION_INTERVAL) ? punchingInterval / 2 : punchingInterval;
-//        long alarmTime = System.currentTimeMillis() + requestIntervals;
-//        alarmManager.setRepeating(AlarmManager.RTC_WAKEUP, alarmTime, requestIntervals, pendingIntent);
-//        Utility.toastMsg(LocationMonitoringService.this.getApplicationContext(), "Location updates to server started.");
-//        Log.v(Constants.TAG, "Alarm scheduled for updating location to server : " + new Date(alarmTime).toString());
-//    }
-//
-//    // Local broadcast receiver to request location updates from location client
-//    public static class LocationUpdatesRequester extends BroadcastReceiver {
-//
-//        public static final int REQUEST_CODE = 1099;
-//
-//        public LocationUpdatesRequester() {
-//        }
-//
-//        @Override
-//        public void onReceive(Context context, Intent intent) {
-//
-//        }
-//    }
 }

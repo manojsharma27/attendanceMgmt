@@ -46,7 +46,8 @@
         <!--</receiver>-->
         <service
             android:name=".service.LocationMonitoringService"
-            android:exported="false" />
+            android:exported="false"
+            android:process="ms.app.service.locationMontoringService"/>
     </application>
 
 </manifest>

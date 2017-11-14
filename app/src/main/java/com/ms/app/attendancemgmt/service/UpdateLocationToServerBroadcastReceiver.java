@@ -77,13 +77,13 @@ public class UpdateLocationToServerBroadcastReceiver extends BroadcastReceiver i
                 }
             }
 
-            String empId = Utility.readPref(context, Constants.EMP_ID); //PreferenceManager.getDefaultSharedPreferences(context).getString(Constants.EMP_ID, null);
+            String empId = Utility.readPref(context, Constants.EMP_ID);
             if (StringUtils.isEmpty(empId)) {
                 Log.e(Constants.TAG, "Not updating to server, emp id: " + empId);
                 return;
             }
 
-            String devId = Utility.readPref(context, Constants.DEVICE_ID); //PreferenceManager.getDefaultSharedPreferences(context).getString(Constants.DEVICE_ID, null);
+            String devId = Utility.readPref(context, Constants.DEVICE_ID);
             if (StringUtils.isEmpty(devId)) {
                 Log.e(Constants.TAG, "Not updating to server, device id: " + devId);
                 return;
