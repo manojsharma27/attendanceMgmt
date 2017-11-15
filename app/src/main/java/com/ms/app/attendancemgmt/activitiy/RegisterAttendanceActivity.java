@@ -488,24 +488,26 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
     @Override
     public void onBackPressed() {
         if (Utility.isPunchedIn(getApplicationContext())) {
-            if (exit) {
-                doPunchOut();
-                loadLoginActivityAndFinish();
-            } else {
-                Utility.toastMsg(getApplicationContext(), "Press back again to Punch out and exit");
-                exit = true;
-                new Handler().postDelayed(new Runnable() {
-                    @Override
-                    public void run() {
-                        exit = false;
-                    }
-                }, 3 * 1000);
-
-            }
-            return;
+            super.onBackPressed();
+        } else {
+            loadLoginActivityAndFinish();
         }
-        loadLoginActivityAndFinish();
-        super.onBackPressed();
+    }
+
+    private void askPressBackAgainToExit() {
+        if (exit) {
+            doPunchOut();
+            loadLoginActivityAndFinish();
+        } else {
+            Utility.toastMsg(getApplicationContext(), "Press back again to Punch out and exit");
+            exit = true;
+            new Handler().postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    exit = false;
+                }
+            }, 3 * 1000);
+        }
     }
 
     private void loadLoginActivityAndFinish() {

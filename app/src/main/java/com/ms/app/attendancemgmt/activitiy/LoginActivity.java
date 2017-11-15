@@ -277,6 +277,7 @@ public class LoginActivity extends AppCompatActivity {
         registerAttendanceIntent.putExtra(Constants.EMP_ID, empId);
         registerAttendanceIntent.putExtra(Constants.EMP_NAME, empName);
         startActivity(registerAttendanceIntent);
+        finish();
     }
 
 

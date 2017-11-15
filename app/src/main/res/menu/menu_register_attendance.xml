@@ -5,24 +5,24 @@
         android:id="@+id/mitemLogout"
         android:enabled="true"
         android:title="Logout"
-        android:visible="true" />
+        android:visible="false" />
 
     <item
         android:id="@+id/mitemStopAutoUpdates"
         android:enabled="true"
         android:title="Stop Registering"
-        android:visible="true" />
+        android:visible="false" />
 
     <item
         android:id="@+id/mitemReadStoredLocations"
         android:enabled="true"
-        android:title="View Stored Locations"
+        android:title="Stored Locations"
         android:visible="true"/>
 
     <item
         android:id="@+id/mitemCleanLocations"
         android:enabled="true"
-        android:title="Clean Locations"
+        android:title="Clean Stored Locations"
         android:visible="true" />
 
     <item
