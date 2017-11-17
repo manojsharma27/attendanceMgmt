@@ -1,4 +1,4 @@
-package com.ms.app.attendancemgmt.location.LocationUtil;
+package com.ms.app.attendancemgmt.location;
 
 
 import android.Manifest;
@@ -13,7 +13,6 @@ import android.support.v7.app.AlertDialog;
 import android.util.Log;
 import android.widget.Toast;
 
-import com.ms.app.attendancemgmt.activitiy.RegisterAttendanceActivity;
 import com.ms.app.attendancemgmt.util.Utility;
 
 import java.util.ArrayList;

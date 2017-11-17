@@ -37,10 +37,10 @@ import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.location.LocationSettingsRequest;
 import com.google.android.gms.location.LocationSettingsResult;
-import com.google.android.gms.location.LocationSettingsStates;
 import com.google.android.gms.location.LocationSettingsStatusCodes;
 import com.ms.app.attendancemgmt.R;
-import com.ms.app.attendancemgmt.location.LocationUtil.PermissionUtils;
+import com.ms.app.attendancemgmt.location.AddressLocator;
+import com.ms.app.attendancemgmt.location.PermissionUtils;
 import com.ms.app.attendancemgmt.model.Attendance;
 import com.ms.app.attendancemgmt.register.ServerUpdateResponseHandler;
 import com.ms.app.attendancemgmt.register.UpdateAttendance;
@@ -427,9 +427,11 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
     public void handleRegisterAttendanceResponse(Response response, Attendance attendance) {
         boolean isSuccess = (null != response && response.message().equals(Constants.MSG_OK));
         String time = Utility.getTime();
-        String successMsg = String.format(Constants.ATTENDANCE_REGISTERED_MSG, time, attendance.getLon(), attendance.getLat());
+        String address = AddressLocator.populateAddress(this.getApplicationContext(), attendance.getLat(), attendance.getLon());
+        String successMsg = String.format(Constants.ATTEND_REG_LOC_MSG, time, address);
         String failedMsg = "Registration failed.\nUnable to connect to service.";
         Utility.showMessageDialog(RegisterAttendanceActivity.this, isSuccess ? successMsg : failedMsg, isSuccess ? R.mipmap.right : R.mipmap.wrong);
+        successMsg = String.format(Constants.ATTEND_REG_TOAST_MSG, time);
         Utility.toastMsg(context, isSuccess ? successMsg : failedMsg);
 
         if (!isSuccess) {

@@ -5,15 +5,12 @@ import android.animation.AnimatorListenerAdapter;
 import android.annotation.TargetApi;
 import android.app.Activity;
 import android.app.AlertDialog;
-import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
-import android.net.ConnectivityManager;
-import android.net.NetworkInfo;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
-import android.preference.PreferenceManager;
+import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
@@ -23,7 +20,6 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.View.OnClickListener;
-import android.view.WindowManager;
 import android.view.inputmethod.EditorInfo;
 import android.widget.Button;
 import android.widget.EditText;
@@ -38,6 +34,7 @@ import com.ms.app.attendancemgmt.util.Utility;
 import org.apache.commons.lang3.StringUtils;
 
 import java.io.IOException;
+import java.util.concurrent.TimeUnit;
 
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -47,6 +44,15 @@ import okhttp3.Response;
  * A login screen that offers login via pin
  */
 public class LoginActivity extends AppCompatActivity {
+
+    /**
+     * TODO:
+     * set mac id - on hold
+     * 5min punch interval, by default - done
+     * handle background location sync in bkg
+     * close app on punch out
+     * punch interval to be configured by login response
+     */
 
     private static final int LOGIN_DELAY = 1000;
     private UserLoginTask mAuthTask = null;
@@ -62,6 +68,9 @@ public class LoginActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
+
+        // as per client need
+        Utility.writePref(this.getApplicationContext(), Constants.SERVICE_URL_PREF_KEY, Constants.TEST_SERVICE_URL);
 
         // Open register attendance activity directly if user already punched in
         if (Utility.isPunchedIn(getApplicationContext())) {
@@ -200,7 +209,6 @@ public class LoginActivity extends AppCompatActivity {
 
         @Override
         protected Boolean doInBackground(Void... params) {
-            //TODO : remove me for sure *********************************************************************************
 //            if (true)
 //                return testDoInBkg();
 
@@ -222,13 +230,27 @@ public class LoginActivity extends AppCompatActivity {
                 return false;
             }
 
+            return validateResponse(response);
+        }
+
+        @NonNull
+        private Boolean validateResponse(Response response) {
             try {
                 String respStr = response.body().string();
                 LoginResponse loginResp = Utility.getObjectMapper().readValue(respStr, LoginResponse.class);
-                if (null != loginResp && "Success".equals(loginResp.getStatus()) && !loginResp.getEmpId().equals("0")) {
-                    empId = loginResp.getEmpId();
-                    empName = loginResp.getMessage();
+                if (null != loginResp &&
+                        "Success".equals(loginResp.getStatus()) &&
+                        !StringUtils.isEmpty(loginResp.getEmpid()) &&
+                        !loginResp.getEmpid().equals("0")) {
+                    empId = loginResp.getEmpid();
+                    empName = loginResp.getEmpname();
                     Utility.writePref(getApplicationContext(), Constants.EMP_ID, empId);
+
+                    // write punch interval to preferences
+                    if (0 != loginResp.getInterval()) {
+                        long punchIntervalMillis = TimeUnit.SECONDS.toMillis(loginResp.getInterval());
+                        Utility.writePref(getApplicationContext(), Constants.PUNCHING_INTERVAL_KEY, String.valueOf(punchIntervalMillis));
+                    }
                     return true;
                 }
             } catch (IOException e) {

@@ -1,13 +1,9 @@
 package com.ms.app.attendancemgmt.service;
 
-
 import android.Manifest;
-import android.app.AlarmManager;
 import android.app.Notification;
 import android.app.PendingIntent;
 import android.app.Service;
-import android.content.BroadcastReceiver;
-import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
@@ -19,19 +15,14 @@ import android.os.Looper;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
-import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
-import com.google.android.gms.location.LocationAvailability;
-import com.google.android.gms.location.LocationCallback;
 import com.google.android.gms.location.LocationListener;
 import com.google.android.gms.location.LocationRequest;
-import com.google.android.gms.location.LocationResult;
 import com.google.android.gms.location.LocationServices;
 import com.ms.app.attendancemgmt.R;
-import com.ms.app.attendancemgmt.activitiy.LoginActivity;
 import com.ms.app.attendancemgmt.activitiy.RegisterAttendanceActivity;
 import com.ms.app.attendancemgmt.model.Attendance;
 import com.ms.app.attendancemgmt.model.LocationModel;
@@ -42,13 +33,10 @@ import com.ms.app.attendancemgmt.util.Utility;
 
 import org.apache.commons.lang3.StringUtils;
 
-import java.util.Arrays;
-import java.util.Date;
 import java.util.Timer;
 import java.util.TimerTask;
 
 import okhttp3.Response;
-
 
 public class LocationMonitoringService extends Service implements
         GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener,
@@ -61,6 +49,7 @@ public class LocationMonitoringService extends Service implements
     public static final String ACTION_LOCATION_BROADCAST = "LocationMonitoringService-LocationBroadcast";
     private TimerTask timerTask;
     private Timer timer;
+    private Long lastUpdateTime;
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
@@ -113,9 +102,9 @@ public class LocationMonitoringService extends Service implements
                     .build();
 
             startForeground(NOTIFICATION_ID_FOREGROUND_SERVICE, notification);
-            Utility.writePref(this.getApplicationContext(), Constants.LAST_UPDATE_TO_SERVER_TIME, String.valueOf(System.currentTimeMillis()));
+            lastUpdateTime = System.currentTimeMillis();
+//            Utility.writePref(this.getApplicationContext(), Constants.LAST_UPDATE_TO_SERVER_TIME, String.valueOf(System.currentTimeMillis()));
             configureLocationUpdateRequesterTask();
-//            Utility.updateLocationServiceStatus(LocationMonitoringService.this.getApplicationContext(), Constants.STARTED);
         } else if (action.equals(Constants.ACTION_STOP_FOREGROUND_LOCATION_SERVICE)) {
             Log.i(Constants.TAG, "Received Stop Foreground Intent");
             stopForeground(true);
@@ -143,6 +132,9 @@ public class LocationMonitoringService extends Service implements
         }
         if (null != timer) {
             timer.cancel();
+        }
+        if (null != mLocationClient) {
+            mLocationClient.disconnect();
         }
     }
 
@@ -215,10 +207,8 @@ public class LocationMonitoringService extends Service implements
 
     @Override
     public void onDestroy() {
-        Log.i(Constants.TAG, "Inside onDestroy");
-        if (null != mLocationClient) {
-            mLocationClient.disconnect();
-        }
+        Log.d(Constants.TAG, "Inside onDestroy");
+        stopLocationUpdateRequesterTask();
         Utility.writePref(getApplicationContext(), Constants.PUNCH_STATUS, Constants.PUNCHED_OUT);
         super.onDestroy();
     }
@@ -242,9 +232,10 @@ public class LocationMonitoringService extends Service implements
     }
 
     private boolean checkPunchIntervalElapsed() {
-        String lastTime = Utility.readPref(this.getApplicationContext(), Constants.LAST_UPDATE_TO_SERVER_TIME);
-        long lastUpdateTime = StringUtils.isEmpty(lastTime) ? System.currentTimeMillis() : Long.parseLong(lastTime);
-        return System.currentTimeMillis() - lastUpdateTime >= Utility.getPunchingInterval(this.getApplicationContext());
+//        String lastTime = Utility.readPref(this.getApplicationContext(), Constants.LAST_UPDATE_TO_SERVER_TIME);
+//        long lastUpdateTime = StringUtils.isEmpty(lastTime) ? System.currentTimeMillis() : Long.parseLong(lastTime);
+        long lastUpdated = (null == lastUpdateTime) ? System.currentTimeMillis() : lastUpdateTime;
+        return System.currentTimeMillis() - lastUpdated >= Utility.getPunchingInterval(this.getApplicationContext());
     }
 
     private LocationRequest getLocationRequest() {
@@ -259,7 +250,7 @@ public class LocationMonitoringService extends Service implements
     public void handleRegisterAttendanceResponse(Response response, Attendance attendance) {
         boolean isSuccess = (null != response && response.message().equals(Constants.MSG_OK));
         String time = Utility.getTime();
-        String successMsg = String.format(Constants.ATTENDANCE_REGISTERED_MSG, time, attendance.getLon(), attendance.getLat());
+        String successMsg = String.format(Constants.ATTEND_REG_LOC_LOG, time, attendance.getLon(), attendance.getLat());
         String failedMsg = "Registration failed.\nUnable to connect to service.";
         if (isSuccess) {
             Log.i(Constants.TAG, successMsg);

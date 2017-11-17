@@ -2,7 +2,6 @@ package com.ms.app.attendancemgmt.model;
 
 import com.fasterxml.jackson.annotation.JsonFormat;
 import com.ms.app.attendancemgmt.util.Constants;
-import com.ms.app.attendancemgmt.util.Utility;
 
 import java.util.Date;
 

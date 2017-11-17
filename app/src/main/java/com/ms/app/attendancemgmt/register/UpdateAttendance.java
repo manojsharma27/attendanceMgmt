@@ -4,22 +4,15 @@ import android.content.Context;
 import android.os.AsyncTask;
 import android.util.Log;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.ms.app.attendancemgmt.R;
 import com.ms.app.attendancemgmt.activitiy.RegisterAttendanceActivity;
 import com.ms.app.attendancemgmt.model.Attendance;
-import com.ms.app.attendancemgmt.service.LocationMonitoringService;
-import com.ms.app.attendancemgmt.service.UpdateLocationToServerBroadcastReceiver;
 import com.ms.app.attendancemgmt.util.Constants;
 import com.ms.app.attendancemgmt.util.Utility;
 
 import org.apache.commons.lang3.ArrayUtils;
 
-import java.net.HttpURLConnection;
-
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
-import okhttp3.Protocol;
 import okhttp3.Request;
 import okhttp3.RequestBody;
 import okhttp3.Response;
@@ -28,19 +21,6 @@ public class UpdateAttendance {
     private Attendance attendance;
     private ServerUpdateResponseHandler responseHandler;
     private Context context;
-//    private Requester requester;
-//
-//    private enum Requester {
-//
-//        REG_ATTEND_ACT("RegisterAttendanceActivity"),
-//        UPD_LOC_BROAD_REC("UpdateLocationToServerBroadcastReceiver"),
-//        LOC_MON_SERV("LocationMonitoringService");
-//        private String value;
-//
-//        Requester(String value) {
-//            this.value = value;
-//        }
-//    }
 
     public UpdateAttendance(ServerUpdateResponseHandler responseHandler, Attendance attendance) {
         this.responseHandler = responseHandler;

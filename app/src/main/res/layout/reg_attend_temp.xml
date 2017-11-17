@@ -53,7 +53,7 @@
         <View
             android:id="@+id/blankView"
             android:layout_width="match_parent"
-            android:layout_height="30sp"
+            android:layout_height="60sp"
             android:layout_below="@id/header" />
 
         <android.support.v7.widget.CardView
@@ -100,6 +100,7 @@
                     android:layout_width="match_parent"
                     android:layout_height="2px"
                     android:layout_below="@+id/rlAddress"
+                    android:layout_marginBottom="5dp"
                     android:background="@color/colorDivider" />
 
                 <RelativeLayout

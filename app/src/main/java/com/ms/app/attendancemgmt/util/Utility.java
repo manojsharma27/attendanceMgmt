@@ -3,15 +3,12 @@ package com.ms.app.attendancemgmt.util;
 
 import android.app.Activity;
 import android.app.AlertDialog;
-import android.content.ClipData;
-import android.content.ClipboardManager;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
-import android.preference.PreferenceManager;
 import android.provider.Settings;
 import android.text.InputType;
 import android.util.Log;
@@ -27,7 +24,6 @@ import android.widget.Toast;
 import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ms.app.attendancemgmt.R;
-import com.ms.app.attendancemgmt.activitiy.LoginActivity;
 import com.ms.app.attendancemgmt.data.SampleData;
 import com.ms.app.attendancemgmt.model.Employee;
 
@@ -36,10 +32,8 @@ import org.apache.commons.lang3.StringUtils;
 import java.net.InetAddress;
 import java.net.UnknownHostException;
 import java.text.SimpleDateFormat;
-import java.util.Arrays;
 import java.util.Calendar;
 import java.util.Date;
-import java.util.List;
 import java.util.TimeZone;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
@@ -48,7 +42,6 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
-import static android.content.Context.CLIPBOARD_SERVICE;
 import static com.ms.app.attendancemgmt.util.Constants.DATE_FORMAT;
 
 public class Utility {
@@ -282,15 +275,6 @@ public class Utility {
         String punchInterval = readPref(context, Constants.PUNCHING_INTERVAL_KEY);
         return (StringUtils.isEmpty(punchInterval) ? Constants.MIN_PUNCH_INTERVAL : Long.parseLong(punchInterval));
     }
-
-//    public static void updateLocationServiceStatus(Context context, String status) {
-//        writePref(context, Constants.SERVICE_STATUS, status);
-//    }
-//
-//    public static boolean isLocationServiceStarted(Context context) {
-//        String status = readPref(context, Constants.SERVICE_STATUS);
-//        return StringUtils.equals(Constants.STARTED, status);
-//    }
 
     public static boolean isPunchedIn(Context context) {
         String punchStatus = Utility.readPref(context, Constants.PUNCH_STATUS);

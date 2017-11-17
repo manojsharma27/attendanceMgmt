@@ -34,13 +34,15 @@ import com.google.android.gms.location.LocationSettingsResult;
 import com.google.android.gms.location.LocationSettingsStates;
 import com.google.android.gms.location.LocationSettingsStatusCodes;
 import com.ms.app.attendancemgmt.R;
-import com.ms.app.attendancemgmt.location.LocationUtil.PermissionUtils;
 
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
+/**
+ * This is not used as of now.
+ */
 public class MyLocationUsingLocationAPI extends AppCompatActivity implements ConnectionCallbacks,
         OnConnectionFailedListener, OnRequestPermissionsResultCallback,
         PermissionUtils.PermissionResultCallback {
