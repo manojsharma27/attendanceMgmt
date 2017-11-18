@@ -180,7 +180,7 @@ public class LocationMonitoringService extends Service implements
             return;
         }
 //        LocationServices.FusedLocationApi.flushLocations(mLocationClient);
-        LocationServices.FusedLocationApi.requestLocationUpdates(mLocationClient, getLocationRequest(), this, Looper.getMainLooper());
+        LocationServices.FusedLocationApi.requestLocationUpdates(mLocationClient, Utility.getLocationRequest(), this, Looper.getMainLooper());
     }
 
     @Override
@@ -236,14 +236,6 @@ public class LocationMonitoringService extends Service implements
 //        long lastUpdateTime = StringUtils.isEmpty(lastTime) ? System.currentTimeMillis() : Long.parseLong(lastTime);
         long lastUpdated = (null == lastUpdateTime) ? System.currentTimeMillis() : lastUpdateTime;
         return System.currentTimeMillis() - lastUpdated >= Utility.getPunchingInterval(this.getApplicationContext());
-    }
-
-    private LocationRequest getLocationRequest() {
-        LocationRequest mLocationRequest = new LocationRequest();
-        mLocationRequest.setInterval(Constants.LOCATION_INTERVAL);
-        mLocationRequest.setFastestInterval(Constants.FASTEST_LOCATION_INTERVAL);
-        mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
-        return mLocationRequest;
     }
 
     @Override

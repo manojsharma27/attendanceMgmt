@@ -19,7 +19,7 @@ public class Constants {
     public static final String PUNCHING_INTERVAL_KEY = "punchingIntervalKey";
     public static final String ATTEND_REG_TOAST_MSG = "Punching registered at %s.";
     public static final String ATTEND_REG_LOC_LOG = "Punching registered at %s at (%s, %s).";
-    public static final String ATTEND_REG_LOC_MSG = "Punching registered at %s.\nLocation:\n%s";
+    public static final String ATTEND_REG_LOC_MSG = "Punching registered at %s.\n\nLocation:\n%s";
 
     public static final String PUNCH_STATUS = "punchStatus";
     public static final String PUNCHED_IN = "punchedIn";

@@ -315,11 +315,7 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
 
         mGoogleApiClient.connect();
 
-        LocationRequest mLocationRequest = new LocationRequest();
-        mLocationRequest.setInterval(10000);
-        mLocationRequest.setFastestInterval(5000);
-        mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
-
+        LocationRequest mLocationRequest = Utility.getLocationRequest();
         LocationSettingsRequest.Builder builder = new LocationSettingsRequest.Builder()
                 .addLocationRequest(mLocationRequest);
 

@@ -11,6 +11,7 @@ import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 import android.provider.Settings;
 import android.text.InputType;
+import android.text.method.ScrollingMovementMethod;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -18,11 +19,13 @@ import android.view.ViewGroup;
 import android.widget.EditText;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
+import android.widget.Scroller;
 import android.widget.TextView;
 import android.widget.Toast;
 
 import com.fasterxml.jackson.databind.MapperFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.android.gms.location.LocationRequest;
 import com.ms.app.attendancemgmt.R;
 import com.ms.app.attendancemgmt.data.SampleData;
 import com.ms.app.attendancemgmt.model.Employee;
@@ -106,6 +109,9 @@ public class Utility {
 	 * message
 	 */
     public static void showMessageDialog(Activity activity, String msg, int imgId) {
+        showCustomMessageDialog(activity, msg, imgId);
+        if (true)
+            return;
         try {
             AlertDialog.Builder builder = new AlertDialog.Builder(activity);
 
@@ -117,6 +123,37 @@ public class Utility {
             builder.setTitle(activity.getString(R.string.app_name));
             TextView text = layout_Message_dialog.findViewById(R.id.tvDialogMessage);
             text.setText(msg);
+            ImageView image = layout_Message_dialog.findViewById(R.id.imgMessage);
+            image.setImageResource(imgId);
+            builder.setNeutralButton("Ok",
+                    new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            dialog.dismiss();
+                        }
+                    });
+            builder.show();
+        } catch (Exception e) {
+            Log.e(Constants.TAG, "display dialog error.");
+        }
+    }
+
+    public static void showCustomMessageDialog(Activity activity, String msg, int imgId) {
+        try {
+            AlertDialog.Builder builder = new AlertDialog.Builder(activity, R.style.Theme_AppCompat_Light);
+
+            LayoutInflater inflater = (LayoutInflater) activity
+                    .getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+            View layout_Message_dialog = inflater.inflate(
+                    R.layout.dialog_message, null);
+            builder.setView(layout_Message_dialog);
+            builder.setTitle(activity.getString(R.string.app_name));
+            TextView text = layout_Message_dialog.findViewById(R.id.tvDialogMessage);
+            text.setText(msg);
+            text.setMaxLines(5);
+            text.setScroller(new Scroller(activity));
+            text.setVerticalScrollBarEnabled(true);
+            text.setMovementMethod(new ScrollingMovementMethod());
             ImageView image = layout_Message_dialog.findViewById(R.id.imgMessage);
             image.setImageResource(imgId);
             builder.setNeutralButton("Ok",
@@ -279,5 +316,13 @@ public class Utility {
     public static boolean isPunchedIn(Context context) {
         String punchStatus = Utility.readPref(context, Constants.PUNCH_STATUS);
         return StringUtils.equals(Constants.PUNCHED_IN, punchStatus);
+    }
+
+    public static LocationRequest getLocationRequest() {
+        LocationRequest mLocationRequest = new LocationRequest();
+        mLocationRequest.setInterval(Constants.LOCATION_INTERVAL);
+        mLocationRequest.setFastestInterval(Constants.FASTEST_LOCATION_INTERVAL);
+        mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+        return mLocationRequest;
     }
 }
