@@ -9,7 +9,9 @@
     android:paddingLeft="@dimen/activity_horizontal_margin"
     android:paddingRight="@dimen/activity_horizontal_margin"
     android:paddingTop="@dimen/activity_vertical_margin"
+    android:fitsSystemWindows="true"
     tools:context="com.ms.app.attendancemgmt.activitiy.LoginActivity">
+
 
     <ProgressBar
         android:id="@+id/login_progress"
@@ -25,12 +27,6 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:orientation="vertical">
-
-
-        <!--<ScrollView-->
-        <!--android:id="@+id/full_login_form"-->
-        <!--android:layout_width="match_parent"-->
-        <!--android:layout_height="match_parent">-->
 
         <LinearLayout
             android:layout_width="wrap_content"
@@ -72,7 +68,9 @@
                     android:layout_height="wrap_content"
                     android:hint="@string/prompt_pin"
                     android:inputType="numberPassword"
-                    android:maxLines="1" />
+                    android:maxLines="1"
+                    android:textAlignment="center"
+                    android:textSize="32sp" />
 
             </android.support.design.widget.TextInputLayout>
 
@@ -81,14 +79,13 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:layout_marginTop="20dp"
-                android:background="@color/colorPrimary"
+                android:background="@color/colorBlue"
                 android:text="@string/action_login"
                 android:textAllCaps="false"
                 android:textColor="@color/colorWhite"
-                android:textSize="18sp"
+                android:textSize="20sp"
                 android:textStyle="normal" />
 
         </LinearLayout>
     </LinearLayout>
-    <!--</ScrollView>-->
 </LinearLayout>

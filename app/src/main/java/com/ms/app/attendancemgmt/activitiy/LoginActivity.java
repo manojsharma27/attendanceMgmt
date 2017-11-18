@@ -3,14 +3,16 @@ package com.ms.app.attendancemgmt.activitiy;
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.annotation.TargetApi;
+import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
+import android.support.annotation.NonNull;
+import android.support.annotation.Nullable;
 import android.support.v7.app.AppCompatActivity;
-import android.text.InputType;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.KeyEvent;
@@ -23,29 +25,36 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
 
-import com.fasterxml.jackson.databind.JsonNode;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ms.app.attendancemgmt.R;
+import com.ms.app.attendancemgmt.model.LoginResponse;
 import com.ms.app.attendancemgmt.util.Constants;
+import com.ms.app.attendancemgmt.util.MasterPinValidateCallback;
 import com.ms.app.attendancemgmt.util.Utility;
 
 import org.apache.commons.lang3.StringUtils;
 
 import java.io.IOException;
+import java.util.concurrent.TimeUnit;
 
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 
 /**
- * A login screen that offers login via email/password.
+ * A login screen that offers login via pin
  */
 public class LoginActivity extends AppCompatActivity {
 
-    private static final int LOGIN_DELAY = 1000;
     /**
-     * Keep track of the login task to ensure we can cancel it if requested.
+     * TODO:
+     * set mac id - on hold
+     * 5min punch interval, by default - done
+     * handle background location sync in bkg
+     * close app on punch out
+     * punch interval to be configured by login response
      */
+
+    private static final int LOGIN_DELAY = 1000;
     private UserLoginTask mAuthTask = null;
 
     // UI references.
@@ -59,6 +68,16 @@ public class LoginActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_login);
+
+        // as per client need
+        Utility.writePref(this.getApplicationContext(), Constants.SERVICE_URL_PREF_KEY, Constants.TEST_SERVICE_URL);
+
+        // Open register attendance activity directly if user already punched in
+        if (Utility.isPunchedIn(getApplicationContext())) {
+            empId = Utility.readPref(this.getApplicationContext(), Constants.EMP_ID);
+            empName = Utility.readPref(this.getApplicationContext(), Constants.EMP_NAME);
+            loadRegisterAttendanceActivity();
+        }
 
         txtPin = findViewById(R.id.pin);
         txtPin.setOnEditorActionListener(new TextView.OnEditorActionListener() {
@@ -82,7 +101,6 @@ public class LoginActivity extends AppCompatActivity {
 
         mLoginFormView = findViewById(R.id.full_login_form);
         mProgressView = findViewById(R.id.login_progress);
-        Utility.loadPreferences(getApplicationContext());
     }
 
     /**
@@ -119,15 +137,20 @@ public class LoginActivity extends AppCompatActivity {
             // Show a progress spinner, and kick off a background task to
             // perform the user login attempt.
             showProgress(true);
-            if (StringUtils.isEmpty(Utility.getServiceUrl())) {
+            if (StringUtils.isEmpty(Utility.getServiceUrl(getApplicationContext()))) {
                 showProgress(false);
                 Utility.showMessageDialog(LoginActivity.this, "Service url not configured!", R.mipmap.wrong);
                 txtPin.setError(getString(R.string.error_invalid_pin));
                 txtPin.requestFocus();
                 return;
             }
-            mAuthTask = new UserLoginTask(pin);
-            mAuthTask.execute((Void) null);
+
+            if (Utility.checkInternetConnected(LoginActivity.this)) {
+                mAuthTask = new UserLoginTask(pin);
+                mAuthTask.execute((Void) null);
+            } else {
+                showProgress(false);
+            }
         }
     }
 
@@ -186,10 +209,13 @@ public class LoginActivity extends AppCompatActivity {
 
         @Override
         protected Boolean doInBackground(Void... params) {
+//            if (true)
+//                return testDoInBkg();
+
             Response response = null;
             try {
                 OkHttpClient client = new OkHttpClient();
-                String finalUrl = Utility.getServiceUrl() + String.format(Constants.AUTHENTICATE_PIN_ENDPOINT, pin);
+                String finalUrl = Utility.getServiceUrl(getApplicationContext()) + String.format(Constants.AUTHENTICATE_PIN_ENDPOINT, pin);
                 Request request = new Request.Builder()
                         .url(finalUrl)
                         .addHeader("Content-Type", "application/json")
@@ -197,29 +223,53 @@ public class LoginActivity extends AppCompatActivity {
                         .build();
                 response = client.newCall(request).execute();
             } catch (Exception e) {
-                Log.e(Constants.LOG_TAG, "Exception while authenticating pin. ", e);
+                Log.e(Constants.TAG, "Exception while authenticating pin. ", e);
             }
             if (null == response || !response.isSuccessful()) {
-                errorMsg = "Failed to connect to internet.";
+                errorMsg = "Failed to connect to service.";
                 return false;
             }
 
-//            String respStr = "{\"Status\":\"Success\",\"Message\":\"David Patterson\"}";
-            ObjectMapper objectMapper = new ObjectMapper();
+            return validateResponse(response);
+        }
+
+        @NonNull
+        private Boolean validateResponse(Response response) {
             try {
                 String respStr = response.body().string();
-                JsonNode respNode = objectMapper.readTree(respStr);
-                JsonNode statusNode = respNode.get("Status");
-                if (null != statusNode && statusNode.asText().equals("Success")) {
-                    empName = respNode.get("Message").asText();
-                    empId = respNode.get("EmpId").asText();
+                LoginResponse loginResp = Utility.getObjectMapper().readValue(respStr, LoginResponse.class);
+                if (null != loginResp &&
+                        "Success".equals(loginResp.getStatus()) &&
+                        !StringUtils.isEmpty(loginResp.getEmpid()) &&
+                        !loginResp.getEmpid().equals("0")) {
+                    empId = loginResp.getEmpid();
+                    empName = loginResp.getEmpname();
+                    Utility.writePref(getApplicationContext(), Constants.EMP_ID, empId);
+
+                    // write punch interval to preferences
+                    if (0 != loginResp.getInterval()) {
+                        long punchIntervalMillis = TimeUnit.SECONDS.toMillis(loginResp.getInterval());
+                        Utility.writePref(getApplicationContext(), Constants.PUNCHING_INTERVAL_KEY, String.valueOf(punchIntervalMillis));
+                    }
                     return true;
                 }
             } catch (IOException e) {
-                Log.e(Constants.LOG_TAG, "Exception while parsing response :" + response.body(), e);
+                Log.e(Constants.TAG, "Exception while parsing response :" + response.body(), e);
             }
-//            return Utility.isPinValid(pin);
             errorMsg = "Pin not registered.";
+            return false;
+        }
+
+        @Nullable
+        private Boolean testDoInBkg() {
+            try {
+                Thread.sleep(1000);
+                empId = "9898";
+                empName = "manoj";
+                Utility.writePref(getApplicationContext(), Constants.EMP_ID, empId);
+                return true;
+            } catch (InterruptedException e) {
+            }
             return false;
         }
 
@@ -249,6 +299,7 @@ public class LoginActivity extends AppCompatActivity {
         registerAttendanceIntent.putExtra(Constants.EMP_ID, empId);
         registerAttendanceIntent.putExtra(Constants.EMP_NAME, empName);
         startActivity(registerAttendanceIntent);
+        finish();
     }
 
 
@@ -262,76 +313,51 @@ public class LoginActivity extends AppCompatActivity {
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
             case R.id.mitemSetService:
-                loadGetMasterPinDialog();
+                MasterPinValidateCallback callback = new MasterPinValidateCallback() {
+                    @Override
+                    public void processMasterPinCallback(Activity activity) {
+                        loadSetServiceUrlDialog();
+                    }
+                };
+                Utility.loadGetMasterPinDialog(LoginActivity.this, callback);
                 return true;
         }
         return super.onOptionsItemSelected(item);
     }
 
-    private void loadGetMasterPinDialog() {
-        AlertDialog.Builder dialogMasterPin = new AlertDialog.Builder(
-                LoginActivity.this);
-        dialogMasterPin.setTitle("Master Pin");
-        final EditText txtMasterPin = new EditText(LoginActivity.this);
-        txtMasterPin.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_VARIATION_PASSWORD);
-
-        dialogMasterPin.setView(txtMasterPin);
-        dialogMasterPin.setPositiveButton("Next",
-                new DialogInterface.OnClickListener() {
-                    public void onClick(DialogInterface dialog, int whichButton) {
-                        String value = txtMasterPin.getText().toString().trim();
-                        if (value.isEmpty()
-                                || !value.equals(Constants.MASTER_PIN)) {
-                            Utility.toastMsg(getApplicationContext(),
-                                    "Invalid Master Pin.");
-                            Utility.showMessageDialog(LoginActivity.this,
-                                    "Invalid Master Pin.", R.mipmap.wrong);
-                            return;
-                        }
-                        dialog.cancel();
-                        LoginActivity.this.loadSetServiceUrlDialog();
-                    }
-                });
-
-        dialogMasterPin.setNegativeButton("Cancel",
-                new DialogInterface.OnClickListener() {
-                    public void onClick(DialogInterface dialog, int whichButton) {
-                        dialog.cancel();
-                    }
-                });
-        dialogMasterPin.show();
-    }
-
     protected void loadSetServiceUrlDialog() {
         AlertDialog.Builder dialogSetService = new AlertDialog.Builder(
                 LoginActivity.this);
-        dialogSetService.setTitle("Service Address");
+        dialogSetService.setTitle("Service Url");
         final EditText txtUrl = new EditText(LoginActivity.this);
-        String prevServiceUrl = Utility.readFromSharedPref(LoginActivity.this, Constants.SERVICE_URL_PREF_KEY);
-        txtUrl.setText(prevServiceUrl);
+        String prevServiceUrl = Utility.getServiceUrl(LoginActivity.this); //readPref(LoginActivity.this, Constants.SERVICE_URL_PREF_KEY);
+        txtUrl.setText(StringUtils.isBlank(prevServiceUrl) ? "" : prevServiceUrl);
+        txtUrl.setLayoutParams(Utility.getLayoutParamsForDialogMsgText());
         dialogSetService.setView(txtUrl);
         dialogSetService.setPositiveButton("Update",
                 new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int whichButton) {
                         String value = txtUrl.getText().toString().trim();
                         if (value.isEmpty() || !value.startsWith("http")) {
-                            Utility.toastMsg(getApplicationContext(),
-                                    "Invalid URL entered.");
                             Utility.showMessageDialog(LoginActivity.this,
                                     "Invalid URL entered.", R.mipmap.wrong);
                             return;
                         }
-                        Utility.saveSharedPref(getApplicationContext(),
+                        if (value.endsWith("/") || value.endsWith("\\")) {
+                            Utility.showMessageDialog(LoginActivity.this,
+                                    "URL should not end with '/' or '\\'.", R.mipmap.wrong);
+                            return;
+                        }
+
+                        Utility.writePref(getApplicationContext(),
                                 Constants.SERVICE_URL_PREF_KEY, value);
-                        Utility.loadPreferences(getApplicationContext());
                         Utility.toastMsg(
                                 getApplicationContext(),
-                                "Service address updated.\n"
-                                        + Utility.getServiceUrl());
+                                "Service URL updated.");
                         Utility.showMessageDialog(
                                 LoginActivity.this,
-                                "Service address updated.\n"
-                                        + Utility.getServiceUrl(),
+                                "Service URL updated.\n"
+                                        + Utility.getServiceUrl(getApplicationContext()),
                                 R.mipmap.right);
                     }
                 });

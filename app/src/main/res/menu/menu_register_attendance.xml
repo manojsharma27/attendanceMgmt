@@ -1,25 +1,40 @@
 <?xml version="1.0" encoding="utf-8"?>
-<menu xmlns:android="http://schemas.android.com/apk/res/android" >
+<menu xmlns:android="http://schemas.android.com/apk/res/android">
 
     <item
         android:id="@+id/mitemLogout"
         android:enabled="true"
         android:title="Logout"
-        android:visible="true">
-    </item>
+        android:visible="false" />
 
-    <!--<item-->
-        <!--android:id="@+id/mitemStartAutoUpdates"-->
-        <!--android:enabled="true"-->
-        <!--android:title="Auto Register"-->
-        <!--android:visible="true">-->
-    <!--</item>-->
+    <item
+        android:id="@+id/mitemStopAutoUpdates"
+        android:enabled="true"
+        android:title="Stop Registering"
+        android:visible="false" />
 
-    <!--<item-->
-        <!--android:id="@+id/mitemStopAutoUpdates"-->
-        <!--android:enabled="true"-->
-        <!--android:title="Stop Registering"-->
-        <!--android:visible="true">-->
-    <!--</item>-->
+    <item
+        android:id="@+id/mitemSyncStoredLocations"
+        android:enabled="true"
+        android:title="Sync Stored Locations"
+        android:visible="true"/>
+
+    <item
+        android:id="@+id/mitemReadStoredLocations"
+        android:enabled="true"
+        android:title="Stored Locations"
+        android:visible="true"/>
+
+    <item
+        android:id="@+id/mitemCleanLocations"
+        android:enabled="true"
+        android:title="Clean Stored Locations"
+        android:visible="true" />
+
+    <item
+        android:id="@+id/mitemLocUpdateInterval"
+        android:enabled="true"
+        android:title="Punch Interval"
+        android:visible="false" />
 
 </menu>

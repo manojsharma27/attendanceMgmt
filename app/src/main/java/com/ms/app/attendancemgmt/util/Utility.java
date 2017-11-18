@@ -5,29 +5,51 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.content.SharedPreferences;
+import android.net.ConnectivityManager;
+import android.net.NetworkInfo;
+import android.provider.Settings;
+import android.text.InputType;
+import android.text.method.ScrollingMovementMethod;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
+import android.view.ViewGroup;
+import android.widget.EditText;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
+import android.widget.Scroller;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import com.fasterxml.jackson.databind.MapperFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.google.android.gms.location.LocationRequest;
 import com.ms.app.attendancemgmt.R;
 import com.ms.app.attendancemgmt.data.SampleData;
 import com.ms.app.attendancemgmt.model.Employee;
 
 import org.apache.commons.lang3.StringUtils;
 
+import java.net.InetAddress;
+import java.net.UnknownHostException;
 import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.TimeZone;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+
+import static com.ms.app.attendancemgmt.util.Constants.DATE_FORMAT;
 
 public class Utility {
 
-    public static final String DATE_FORMAT = "yyyy-MM-dd'T'HH:mm:ss";
-    private static String SERVICE_URL = StringUtils.EMPTY;
+    private static ObjectMapper objectMapper;
 
     public static String formatDate(String date) {
         SimpleDateFormat dateFormat = new SimpleDateFormat(DATE_FORMAT);
@@ -58,19 +80,27 @@ public class Utility {
         return null;
     }
 
+    synchronized public static ObjectMapper getObjectMapper() {
+        if (null == objectMapper) {
+            objectMapper = new ObjectMapper();
+            objectMapper.configure(MapperFeature.ACCEPT_CASE_INSENSITIVE_PROPERTIES, true);
+        }
+        return objectMapper;
+    }
+
     public static void toastMsg(Context context, String msg) {
         Toast.makeText(context, msg, Toast.LENGTH_SHORT).show();
     }
 
-    public static void saveSharedPref(Context context, String key, String value) {
-        SharedPreferences prefs = context.getSharedPreferences(Constants.SHARED_PREF_NAME, Context.MODE_PRIVATE);
+    public static void writePref(Context context, String key, String value) {
+        SharedPreferences prefs = context.getApplicationContext().getSharedPreferences(Constants.SHARED_PREF_NAME, Context.MODE_PRIVATE);
         SharedPreferences.Editor editor = prefs.edit();
         editor.putString(key, value);
         editor.apply();
     }
 
-    public static String readFromSharedPref(Context context, String key) {
-        SharedPreferences prefs = context.getSharedPreferences(Constants.SHARED_PREF_NAME, Context.MODE_PRIVATE);
+    public static String readPref(Context context, String key) {
+        SharedPreferences prefs = context.getApplicationContext().getSharedPreferences(Constants.SHARED_PREF_NAME, Context.MODE_PRIVATE);
         return prefs.getString(key, null);
     }
 
@@ -79,6 +109,9 @@ public class Utility {
 	 * message
 	 */
     public static void showMessageDialog(Activity activity, String msg, int imgId) {
+        showCustomMessageDialog(activity, msg, imgId);
+        if (true)
+            return;
         try {
             AlertDialog.Builder builder = new AlertDialog.Builder(activity);
 
@@ -87,7 +120,7 @@ public class Utility {
             View layout_Message_dialog = inflater.inflate(
                     R.layout.dialog_message, null);
             builder.setView(layout_Message_dialog);
-            builder.setTitle(Constants.APP_TITLE);
+            builder.setTitle(activity.getString(R.string.app_name));
             TextView text = layout_Message_dialog.findViewById(R.id.tvDialogMessage);
             text.setText(msg);
             ImageView image = layout_Message_dialog.findViewById(R.id.imgMessage);
@@ -101,21 +134,195 @@ public class Utility {
                     });
             builder.show();
         } catch (Exception e) {
-            Log.e(Constants.LOG_TAG, "display dialog error.");
+            Log.e(Constants.TAG, "display dialog error.");
         }
     }
 
-    public static void loadPreferences(Context context) {
-        SERVICE_URL = readFromSharedPref(context, Constants.SERVICE_URL_PREF_KEY);
+    public static void showCustomMessageDialog(Activity activity, String msg, int imgId) {
+        try {
+            AlertDialog.Builder builder = new AlertDialog.Builder(activity, R.style.Theme_AppCompat_Light);
+
+            LayoutInflater inflater = (LayoutInflater) activity
+                    .getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+            View layout_Message_dialog = inflater.inflate(
+                    R.layout.dialog_message, null);
+            builder.setView(layout_Message_dialog);
+            builder.setTitle(activity.getString(R.string.app_name));
+            TextView text = layout_Message_dialog.findViewById(R.id.tvDialogMessage);
+            text.setText(msg);
+            text.setMaxLines(5);
+            text.setScroller(new Scroller(activity));
+            text.setVerticalScrollBarEnabled(true);
+            text.setMovementMethod(new ScrollingMovementMethod());
+            ImageView image = layout_Message_dialog.findViewById(R.id.imgMessage);
+            image.setImageResource(imgId);
+            builder.setNeutralButton("Ok",
+                    new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            dialog.dismiss();
+                        }
+                    });
+            builder.show();
+        } catch (Exception e) {
+            Log.e(Constants.TAG, "display dialog error.");
+        }
     }
 
-    public static String getServiceUrl() {
-        return SERVICE_URL;
+    public static void showMessageDialog(final Activity activity, String msg) {
+        try {
+            AlertDialog.Builder builder = new AlertDialog.Builder(activity);
+
+            LayoutInflater inflater = (LayoutInflater) activity
+                    .getSystemService(Context.LAYOUT_INFLATER_SERVICE);
+            View layout_Message_dialog = inflater.inflate(
+                    R.layout.dialog_message, null);
+            builder.setView(layout_Message_dialog);
+            builder.setTitle(activity.getString(R.string.app_name));
+            TextView text = layout_Message_dialog.findViewById(R.id.tvDialogMessage);
+            text.setVerticalScrollBarEnabled(true);
+            text.setHorizontalScrollBarEnabled(true);
+            text.setText(msg);
+            text.setTextIsSelectable(true);
+            ImageView image = layout_Message_dialog.findViewById(R.id.imgMessage);
+            image.setVisibility(View.GONE);
+            builder.setNeutralButton("Ok",
+                    new DialogInterface.OnClickListener() {
+                        @Override
+                        public void onClick(DialogInterface dialog, int which) {
+                            dialog.dismiss();
+                        }
+                    });
+            builder.show();
+        } catch (Exception e) {
+            Log.e(Constants.TAG, "display dialog error.");
+        }
+    }
+
+    public static void showGpsNotEnabledDialog(final Activity activity) {
+        new AlertDialog.Builder(activity)
+                .setTitle(activity.getString(R.string.app_name))
+                .setMessage("GPS is not enabled. Would you like to enable it?")
+                .setCancelable(false)
+                .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialogInterface, int i) {
+                        Intent locationIntent = new Intent(Settings.ACTION_LOCATION_SOURCE_SETTINGS);
+                        activity.startActivity(locationIntent);
+                    }
+                })
+                .setNegativeButton("No", new DialogInterface.OnClickListener() {
+                    @Override
+                    public void onClick(DialogInterface dialogInterface, int i) {
+                        dialogInterface.cancel();
+                        Utility.toastMsg(activity, "Attendance not registered.");
+                    }
+                })
+                .create()
+                .show();
+    }
+
+    public static void loadGetMasterPinDialog(final Activity activity, final MasterPinValidateCallback callback) {
+        AlertDialog.Builder dialogMasterPin = new AlertDialog.Builder(
+                activity);
+        dialogMasterPin.setTitle("Master Pin");
+        final EditText txtMasterPin = new EditText(activity);
+        txtMasterPin.setInputType(InputType.TYPE_CLASS_NUMBER | InputType.TYPE_NUMBER_VARIATION_PASSWORD);
+        txtMasterPin.setLayoutParams(Utility.getLayoutParamsForDialogMsgText());
+        dialogMasterPin.setView(txtMasterPin);
+        dialogMasterPin.setPositiveButton("Next",
+                new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int whichButton) {
+                        String value = txtMasterPin.getText().toString().trim();
+                        if (!StringUtils.equals(value, Constants.MASTER_PIN)) {
+                            Utility.toastMsg(activity,
+                                    "Invalid Master Pin.");
+                            Utility.showMessageDialog(activity,
+                                    "Invalid Master Pin.", R.mipmap.wrong);
+                            return;
+                        }
+                        dialog.cancel();
+                        callback.processMasterPinCallback(activity);
+                    }
+                });
+
+        dialogMasterPin.setNegativeButton("Cancel",
+                new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int whichButton) {
+                        dialog.cancel();
+                    }
+                });
+        dialogMasterPin.show();
+    }
+
+    public static LinearLayout.LayoutParams getLayoutParamsForDialogMsgText() {
+        LinearLayout.LayoutParams layoutParams = new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+        layoutParams.setMargins(5, 5, 5, 5);
+        return layoutParams;
+    }
+
+    public static String getServiceUrl(Context context) {
+        return readPref(context, Constants.SERVICE_URL_PREF_KEY);
     }
 
     public static String getTime() {
         Calendar cal = Calendar.getInstance();
         String ampm = cal.get(Calendar.AM_PM) == Calendar.AM ? "AM" : "PM";
         return String.format("%s:%s %s", cal.get(Calendar.HOUR), cal.get(Calendar.MINUTE), ampm);
+    }
+
+    public static boolean checkInternetConnected(Context context) {
+        ConnectivityManager connectivityManager
+                = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);
+        NetworkInfo activeNetworkInfo = connectivityManager.getActiveNetworkInfo();
+
+        if (null == activeNetworkInfo || !activeNetworkInfo.isConnected()) {
+            if (context instanceof Activity) {
+                Utility.showMessageDialog((Activity) context, "No Internet Connection !", R.mipmap.img_sad_smiley);
+            }
+            Log.e(Constants.TAG, "No internet connection.");
+            return false;
+        }
+        return true; // Utility.ableToAccessInternet(2 * 1000);
+    }
+
+    public static boolean ableToAccessInternet(int timeOutInMillis) {
+        InetAddress inetAddress = null;
+        try {
+            Future<InetAddress> future = Executors.newSingleThreadExecutor().submit(new Callable<InetAddress>() {
+                @Override
+                public InetAddress call() {
+                    try {
+                        return InetAddress.getByName("google.com");
+                    } catch (UnknownHostException e) {
+                        return null;
+                    }
+                }
+            });
+            inetAddress = future.get(timeOutInMillis, TimeUnit.MILLISECONDS);
+            future.cancel(true);
+        } catch (InterruptedException | ExecutionException | TimeoutException e) {
+        }
+        boolean connected = inetAddress != null && !inetAddress.equals("");
+        Log.d(Constants.TAG, (connected ? "" : "not ") + "able to access internet.");
+        return connected;
+    }
+
+    public static long getPunchingInterval(Context context) {
+        String punchInterval = readPref(context, Constants.PUNCHING_INTERVAL_KEY);
+        return (StringUtils.isEmpty(punchInterval) ? Constants.MIN_PUNCH_INTERVAL : Long.parseLong(punchInterval));
+    }
+
+    public static boolean isPunchedIn(Context context) {
+        String punchStatus = Utility.readPref(context, Constants.PUNCH_STATUS);
+        return StringUtils.equals(Constants.PUNCHED_IN, punchStatus);
+    }
+
+    public static LocationRequest getLocationRequest() {
+        LocationRequest mLocationRequest = new LocationRequest();
+        mLocationRequest.setInterval(Constants.LOCATION_INTERVAL);
+        mLocationRequest.setFastestInterval(Constants.FASTEST_LOCATION_INTERVAL);
+        mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+        return mLocationRequest;
     }
 }
