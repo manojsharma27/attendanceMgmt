@@ -179,7 +179,7 @@ public class LocationMonitoringService extends Service implements
             Log.d(Constants.TAG, "== Error On onConnected(). Permission not granted");
             return;
         }
-        LocationServices.FusedLocationApi.flushLocations(mLocationClient);
+//        LocationServices.FusedLocationApi.flushLocations(mLocationClient);
         LocationServices.FusedLocationApi.requestLocationUpdates(mLocationClient, getLocationRequest(), this, Looper.getMainLooper());
     }
 

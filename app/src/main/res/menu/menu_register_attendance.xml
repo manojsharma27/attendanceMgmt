@@ -14,6 +14,12 @@
         android:visible="false" />
 
     <item
+        android:id="@+id/mitemSyncStoredLocations"
+        android:enabled="true"
+        android:title="Sync Stored Locations"
+        android:visible="true"/>
+
+    <item
         android:id="@+id/mitemReadStoredLocations"
         android:enabled="true"
         android:title="Stored Locations"
@@ -29,6 +35,6 @@
         android:id="@+id/mitemLocUpdateInterval"
         android:enabled="true"
         android:title="Punch Interval"
-        android:visible="true" />
+        android:visible="false" />
 
 </menu>

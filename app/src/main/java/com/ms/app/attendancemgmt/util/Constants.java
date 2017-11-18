@@ -30,7 +30,7 @@ public class Constants {
     public static final String REGISTER_ATTENDANCE_ENDPOINT = "/registerAttendance";
 
     public static final long FASTEST_LOCATION_INTERVAL = TimeUnit.SECONDS.toMillis(30);
-    public static final long LOCATION_INTERVAL = TimeUnit.MINUTES.toMillis(1); // default location interval 1 min
+    public static final long LOCATION_INTERVAL = TimeUnit.MINUTES.toMillis(2); // default location interval 1 min
     public static final long MIN_PUNCH_INTERVAL = TimeUnit.MINUTES.toMillis(5); // minimum punch interval set to default, 30 sec
     public static final long MAX_PUNCH_INTERVAL = TimeUnit.HOURS.toMillis(1); // max punch interval set to 1 hr
     public static final String ACTION_START_FOREGROUND_LOCATION_SERVICE = "com.ms.app.attendancemgmt.service.locationmonitoringservice.startforeground";

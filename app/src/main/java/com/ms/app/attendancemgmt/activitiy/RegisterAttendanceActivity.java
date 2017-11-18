@@ -41,6 +41,7 @@ import com.google.android.gms.location.LocationSettingsStatusCodes;
 import com.ms.app.attendancemgmt.R;
 import com.ms.app.attendancemgmt.location.AddressLocator;
 import com.ms.app.attendancemgmt.location.PermissionUtils;
+import com.ms.app.attendancemgmt.location.StoredLocationUploader;
 import com.ms.app.attendancemgmt.model.Attendance;
 import com.ms.app.attendancemgmt.register.ServerUpdateResponseHandler;
 import com.ms.app.attendancemgmt.register.UpdateAttendance;
@@ -465,6 +466,15 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
                     sb.append(String.format("( %s, %s )", attendance.getLat(), attendance.getLon())).append("\n");
                 }
                 Utility.showMessageDialog(RegisterAttendanceActivity.this, sb.toString());
+                return true;
+            case R.id.mitemSyncStoredLocations:
+                if (!Utility.checkInternetConnected(this.getApplicationContext())) {
+                    Utility.toastMsg(getApplicationContext(), "Failed to sync stored locations");
+                    return true;
+                }
+                StoredLocationUploader uploader = new StoredLocationUploader(this.getApplicationContext());
+                uploader.checkLocationsAndUpload();
+                Utility.toastMsg(this.getApplicationContext(), "Started background sync of stored locations.");
                 return true;
             case R.id.mitemCleanLocations:
                 FileHandler.cleanUp(this.getApplicationContext());

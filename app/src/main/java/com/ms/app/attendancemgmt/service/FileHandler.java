@@ -2,6 +2,7 @@ package com.ms.app.attendancemgmt.service;
 
 
 import android.content.Context;
+import android.support.annotation.NonNull;
 import android.util.Log;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
@@ -39,9 +40,8 @@ public class FileHandler {
         }
         FileOutputStream fileout = null;
         OutputStreamWriter outputWriter = null;
-        String fileName = context.getFilesDir() + FILE_NAME;
         try {
-            fileout = new FileOutputStream(new File(fileName), true);
+            fileout = new FileOutputStream(new File(getFileName(context)), true);
             outputWriter = new OutputStreamWriter(fileout);
             outputWriter.write(modelStr + Constants.FILE_DELIMITER);
             outputWriter.close();
@@ -67,10 +67,9 @@ public class FileHandler {
     public static List<Attendance> readAttendanceFromFile(Context context) {
         FileInputStream fileIn = null;
         InputStreamReader reader = null;
-        String fileName = context.getFilesDir() + FILE_NAME;
         StringBuilder sb = new StringBuilder();
         try {
-            fileIn = new FileInputStream (new File(fileName));
+            fileIn = new FileInputStream(new File(getFileName(context)));
             reader = new InputStreamReader(fileIn);
 
             char[] inputBuffer = new char[100];
@@ -115,9 +114,13 @@ public class FileHandler {
         return attendances;
     }
 
+    @NonNull
+    private static String getFileName(Context context) {
+        return context.getFilesDir() + FILE_NAME;
+    }
+
     public static void cleanUp(Context context) {
-        String fileName = context.getFilesDir() + FILE_NAME;
-        File file = new File(fileName);
+        File file = new File(getFileName(context));
         if (file.exists()) {
             boolean deleted = file.delete();
             if (deleted) {
@@ -126,5 +129,18 @@ public class FileHandler {
                 Log.e(Constants.TAG, "Failed to delete file : " + file.getAbsolutePath());
             }
         }
+    }
+
+    public static boolean locationFileExists(Context context) {
+        File file = new File(getFileName(context));
+        return file.exists() && file.isFile();
+    }
+
+    public static boolean checkFileModifiedAfter(Context context, long prevTime) {
+        File file = new File(getFileName(context));
+        if (file.exists()) {
+            return file.lastModified() > prevTime;
+        }
+        return false;
     }
 }
