@@ -40,5 +40,6 @@ public class Constants {
 
     public static final String STARTED_BY = "started_by";
     public static final String ACTIVITY = "activity";
+    public static final String SELF = "self";
     public static final long START_LOC_MONITOR_SERVICE_INTERVAL = TimeUnit.SECONDS.toMillis(5); // start location update service after 5 sec of service auto restart
 }

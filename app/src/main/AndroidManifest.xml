@@ -18,9 +18,7 @@
         <activity
             android:name=".activitiy.LoginActivity"
             android:label="@string/app_name"
-            android:windowSoftInputMode="adjustResize"
-
-            >
+            android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -34,20 +32,11 @@
                 android:name="android.support.PARENT_ACTIVITY"
                 android:value=".activitiy.LoginActivity" />
         </activity>
-        <!--<receiver-->
-        <!--android:name=".service.UpdateLocationToServerBroadcastReceiver"-->
-        <!--android:process=":remote" >-->
-        <!--<intent-filter>-->
-        <!--<action android:name="UpdateLocationToServerBroadcastReceiver-updateLocation"/>-->
-        <!--</intent-filter>-->
-        <!--<intent-filter>-->
-        <!--<action android:name="LocationMonitoringService-LocationBroadcast"/>-->
-        <!--</intent-filter>-->
-        <!--</receiver>-->
+
         <service
             android:name=".service.LocationMonitoringService"
             android:exported="false"
-            android:process="ms.app.service.locationMontoringService"/>
+            android:process="ms.app.service.locationMonitoringService" />
     </application>
 
 </manifest>

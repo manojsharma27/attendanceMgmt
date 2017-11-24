@@ -405,6 +405,8 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
         // TODO : get uniqueId for app installation
         attendance.setLat(latitude);
         attendance.setLon(longitude);
+        String address = AddressLocator.populateAddress(this.getApplicationContext(), latitude, longitude);
+        attendance.setAddress(address);
         if (null == telephonyManager) {
             checkAndRequestDeviceIdPermission();
             populateDeviceId();
@@ -416,7 +418,7 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
         Utility.writePref(context, Constants.DEVICE_ID, attendance.getDevId());
 
         UpdateAttendance updateAttendance = new UpdateAttendance(RegisterAttendanceActivity.this, attendance);
-        updateAttendance.setContext(getApplicationContext());
+        updateAttendance.setContext(RegisterAttendanceActivity.this.getApplicationContext());
         updateAttendance.register();
     }
 

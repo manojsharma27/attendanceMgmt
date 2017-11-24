@@ -4,6 +4,9 @@ import android.content.Context;
 import android.location.Address;
 import android.location.Geocoder;
 import android.text.TextUtils;
+import android.util.Log;
+
+import com.ms.app.attendancemgmt.util.Constants;
 
 import org.apache.commons.lang3.StringUtils;
 
@@ -27,7 +30,7 @@ public class AddressLocator {
             addresses = geocoder.getFromLocation(latitude, longitude, 1);
             return addresses.get(0);
         } catch (IOException e) {
-            e.printStackTrace();
+            Log.e(Constants.TAG, "Exception in getLocationDetails - " + e.getMessage());
         }
         return null;
     }
@@ -38,6 +41,9 @@ public class AddressLocator {
 
         if (locationAddress != null) {
             String address = locationAddress.getAddressLine(0);
+            if (!StringUtils.isEmpty(address)) {
+                return address;
+            }
             String address1 = locationAddress.getAddressLine(1);
             String city = locationAddress.getLocality();
             String state = locationAddress.getAdminArea();

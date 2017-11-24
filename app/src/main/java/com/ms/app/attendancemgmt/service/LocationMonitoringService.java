@@ -9,9 +9,9 @@ import android.content.pm.PackageManager;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.location.Location;
+import android.location.LocationManager;
 import android.os.Bundle;
 import android.os.IBinder;
-import android.os.Looper;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
 import android.support.v4.app.ActivityCompat;
@@ -20,10 +20,11 @@ import android.util.Log;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.location.LocationListener;
-import com.google.android.gms.location.LocationRequest;
 import com.google.android.gms.location.LocationServices;
 import com.ms.app.attendancemgmt.R;
 import com.ms.app.attendancemgmt.activitiy.RegisterAttendanceActivity;
+import com.ms.app.attendancemgmt.location.AddressLocator;
+import com.ms.app.attendancemgmt.location.StoredLocationUploader;
 import com.ms.app.attendancemgmt.model.Attendance;
 import com.ms.app.attendancemgmt.model.LocationModel;
 import com.ms.app.attendancemgmt.register.ServerUpdateResponseHandler;
@@ -40,7 +41,7 @@ import okhttp3.Response;
 
 public class LocationMonitoringService extends Service implements
         GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener,
-        LocationListener, ServerUpdateResponseHandler {
+        LocationListener, ServerUpdateResponseHandler, android.location.LocationListener {
 
     GoogleApiClient mLocationClient;
     private static final int REQUEST_PERMISSIONS_REQUEST_CODE = 34;
@@ -50,11 +51,12 @@ public class LocationMonitoringService extends Service implements
     private TimerTask timerTask;
     private Timer timer;
     private Long lastUpdateTime;
+    private StoredLocationUploader storedLocationUploader;
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
         Log.i(Constants.TAG + this.getClass().getSimpleName(), "Inside onStartCommand");
-        if (null == intent) {
+        if (null == intent || !startedByActivityOrSelf(intent)) {
             Utility.writePref(getApplicationContext(), Constants.PUNCH_STATUS, Constants.PUNCHED_IN);
             Log.w(Constants.TAG, "Service was stopped and automatically restarted by the system.");
             BackgroundTaskHandler.startLocationMonitorServiceBySelf(this, Constants.START_LOC_MONITOR_SERVICE_INTERVAL);
@@ -67,6 +69,15 @@ public class LocationMonitoringService extends Service implements
             configureNotificationIntent(intent);
         }
         return START_STICKY;
+    }
+
+    private boolean startedByActivityOrSelf(Intent intent) {
+        String startedBy = intent.getStringExtra(Constants.STARTED_BY);
+        if (StringUtils.isEmpty(startedBy)) {
+            return false;
+        }
+
+        return startedBy.equals(Constants.ACTIVITY) || startedBy.equals(Constants.SELF);
     }
 
     @Override
@@ -102,8 +113,9 @@ public class LocationMonitoringService extends Service implements
                     .build();
 
             startForeground(NOTIFICATION_ID_FOREGROUND_SERVICE, notification);
+            // init uploader
             lastUpdateTime = System.currentTimeMillis();
-//            Utility.writePref(this.getApplicationContext(), Constants.LAST_UPDATE_TO_SERVER_TIME, String.valueOf(System.currentTimeMillis()));
+            storedLocationUploader = new StoredLocationUploader(this.getApplicationContext());
             configureLocationUpdateRequesterTask();
         } else if (action.equals(Constants.ACTION_STOP_FOREGROUND_LOCATION_SERVICE)) {
             Log.i(Constants.TAG, "Received Stop Foreground Intent");
@@ -117,13 +129,22 @@ public class LocationMonitoringService extends Service implements
         timerTask = new TimerTask() {
             @Override
             public void run() {
+                Log.i(Constants.TAG, "Executing task....");
                 requestLocationUpdate();
+                uploadStoredLocations();
             }
         };
         timer = new Timer();
-        long punchInterval = Utility.getPunchingInterval(this.getApplicationContext());
+        long punchInterval = Utility.getPunchingInterval(LocationMonitoringService.this.getApplicationContext());
         long requestInterval = Math.max(punchInterval / 4, Constants.MIN_PUNCH_INTERVAL);
+//        requestInterval = TimeUnit.SECONDS.toMillis(30); // this was set for testing purpose
         timer.schedule(timerTask, Constants.FASTEST_LOCATION_INTERVAL, requestInterval);
+    }
+
+    private void uploadStoredLocations() {
+        if (Utility.checkInternetConnected(LocationMonitoringService.this.getApplicationContext())) {
+            storedLocationUploader.checkLocationsAndUpload();
+        }
     }
 
     private void stopLocationUpdateRequesterTask() {
@@ -132,6 +153,9 @@ public class LocationMonitoringService extends Service implements
         }
         if (null != timer) {
             timer.cancel();
+        }
+        if (null != storedLocationUploader) {
+            storedLocationUploader = null;
         }
         if (null != mLocationClient) {
             mLocationClient.disconnect();
@@ -142,9 +166,9 @@ public class LocationMonitoringService extends Service implements
     private Bundle prepareBundle(Intent intent) {
         Bundle bundle = intent.getExtras();
         if (null == bundle) bundle = new Bundle();
-        bundle.putString(Constants.EMP_ID, Utility.readPref(this.getApplicationContext(), Constants.EMP_ID));
-        bundle.putString(Constants.EMP_NAME, Utility.readPref(this.getApplicationContext(), Constants.EMP_NAME));
-        bundle.putString(Constants.DEVICE_ID, Utility.readPref(this.getApplicationContext(), Constants.DEVICE_ID));
+        bundle.putString(Constants.EMP_ID, Utility.readPref(LocationMonitoringService.this.getApplicationContext(), Constants.EMP_ID));
+        bundle.putString(Constants.EMP_NAME, Utility.readPref(LocationMonitoringService.this.getApplicationContext(), Constants.EMP_NAME));
+        bundle.putString(Constants.DEVICE_ID, Utility.readPref(LocationMonitoringService.this.getApplicationContext(), Constants.DEVICE_ID));
         return bundle;
     }
 
@@ -180,7 +204,9 @@ public class LocationMonitoringService extends Service implements
             return;
         }
 //        LocationServices.FusedLocationApi.flushLocations(mLocationClient);
-        LocationServices.FusedLocationApi.requestLocationUpdates(mLocationClient, Utility.getLocationRequest(), this, Looper.getMainLooper());
+//        LocationServices.FusedLocationApi.requestLocationUpdates(mLocationClient, Utility.getLocationRequest(), this, Looper.getMainLooper());
+        LocationManager locationManager = (LocationManager) this.getSystemService(LOCATION_SERVICE);
+        locationManager.requestLocationUpdates(LocationManager.GPS_PROVIDER, Constants.FASTEST_LOCATION_INTERVAL, 5, this);
     }
 
     @Override
@@ -198,6 +224,24 @@ public class LocationMonitoringService extends Service implements
                 sendUpdatesToService(locationModel);
             }
         }
+
+    }
+
+    @Override
+    public void onStatusChanged(String provider, int status, Bundle extras) {
+
+    }
+
+    @Override
+    public void onProviderEnabled(String provider) {
+        if (provider.equals(LocationManager.GPS_PROVIDER)) {
+            requestLocationUpdate();
+        }
+    }
+
+    @Override
+    public void onProviderDisabled(String provider) {
+
     }
 
     @Override
@@ -214,28 +258,31 @@ public class LocationMonitoringService extends Service implements
     }
 
     private void sendUpdatesToService(LocationModel locationModel) {
-        Attendance attendance = new Attendance(Utility.readPref(this.getApplicationContext(), Constants.EMP_ID));
-        attendance.setDevId(Utility.readPref(this.getApplicationContext(), Constants.DEVICE_ID));
+        Attendance attendance = new Attendance(Utility.readPref(LocationMonitoringService.this.getApplicationContext(), Constants.EMP_ID));
+        attendance.setAddress(AddressLocator.populateAddress(LocationMonitoringService.this.getApplicationContext(), locationModel.getLatitude(), locationModel.getLongitude()));
+        attendance.setDevId(Utility.readPref(LocationMonitoringService.this.getApplicationContext(), Constants.DEVICE_ID));
         attendance.setLat(locationModel.getLatitude());
         attendance.setLon(locationModel.getLongitude());
         attendance.setTime(locationModel.getLogTime());
 
         if (Utility.checkInternetConnected(LocationMonitoringService.this.getApplicationContext())) {
             UpdateAttendance updateAttendance = new UpdateAttendance(LocationMonitoringService.this, attendance);
-            updateAttendance.setContext(this.getApplicationContext());
+            updateAttendance.setContext(LocationMonitoringService.this.getApplicationContext());
             updateAttendance.register();
         } else {
             // write location updates to file
             FileHandler.writeAttendanceToFile(LocationMonitoringService.this.getApplicationContext(), attendance);
-            Log.i(Constants.TAG, "Recorded in file");
+            Log.i(Constants.TAG, "Recorded in file : " + attendance.toString());
         }
     }
 
     private boolean checkPunchIntervalElapsed() {
-//        String lastTime = Utility.readPref(this.getApplicationContext(), Constants.LAST_UPDATE_TO_SERVER_TIME);
-//        long lastUpdateTime = StringUtils.isEmpty(lastTime) ? System.currentTimeMillis() : Long.parseLong(lastTime);
-        long lastUpdated = (null == lastUpdateTime) ? System.currentTimeMillis() : lastUpdateTime;
-        return System.currentTimeMillis() - lastUpdated >= Utility.getPunchingInterval(this.getApplicationContext());
+        if (null == lastUpdateTime) {
+            return true;
+        }
+
+//        long lastUpdated = (null == lastUpdateTime) ? System.currentTimeMillis() : lastUpdateTime;
+        return System.currentTimeMillis() - lastUpdateTime >= Utility.getPunchingInterval(LocationMonitoringService.this.getApplicationContext());
     }
 
     @Override

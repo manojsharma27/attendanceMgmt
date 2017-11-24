@@ -10,6 +10,7 @@ import java.util.Date;
  */
 public class Attendance {
 
+    private String address;
     private String id;
     private String devId;
     private double lat;
@@ -21,6 +22,18 @@ public class Attendance {
     }
 
     public Attendance(String id) {
+        this.id = id;
+    }
+
+    public String getAddress() {
+        return address;
+    }
+
+    public void setAddress(String address) {
+        this.address = address;
+    }
+
+    public void setId(String id) {
         this.id = id;
     }
 
@@ -63,7 +76,8 @@ public class Attendance {
     @Override
     public String toString() {
         final StringBuilder sb = new StringBuilder("Attendance{");
-        sb.append("id='").append(id).append('\'');
+        sb.append("address='").append(address).append('\'');
+        sb.append(", id='").append(id).append('\'');
         sb.append(", devId='").append(devId).append('\'');
         sb.append(", lat=").append(lat);
         sb.append(", lon=").append(lon);

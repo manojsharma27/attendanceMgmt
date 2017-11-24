@@ -109,9 +109,6 @@ public class Utility {
 	 * message
 	 */
     public static void showMessageDialog(Activity activity, String msg, int imgId) {
-        showCustomMessageDialog(activity, msg, imgId);
-        if (true)
-            return;
         try {
             AlertDialog.Builder builder = new AlertDialog.Builder(activity);
 

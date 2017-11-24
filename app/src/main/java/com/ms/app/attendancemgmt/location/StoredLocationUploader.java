@@ -7,9 +7,7 @@ import com.ms.app.attendancemgmt.model.Attendance;
 import com.ms.app.attendancemgmt.register.ServerUpdateResponseHandler;
 import com.ms.app.attendancemgmt.register.UpdateAttendance;
 import com.ms.app.attendancemgmt.service.FileHandler;
-import com.ms.app.attendancemgmt.service.LocationMonitoringService;
 import com.ms.app.attendancemgmt.util.Constants;
-import com.ms.app.attendancemgmt.util.Utility;
 
 import java.util.List;
 
@@ -23,6 +21,7 @@ public class StoredLocationUploader implements ServerUpdateResponseHandler {
 
     private Context context;
     private volatile int entry_count;
+    private volatile int uploadCounter;
     private long uploadStartTime;
 
     public StoredLocationUploader(Context context) {
@@ -30,10 +29,11 @@ public class StoredLocationUploader implements ServerUpdateResponseHandler {
     }
 
     public void checkLocationsAndUpload() {
-        if (FileHandler.locationFileExists(context)) {
+        if (entriesPresent()) {
             List<Attendance> attendanceList = FileHandler.readAttendanceFromFile(context);
             uploadStartTime = System.currentTimeMillis();
             entry_count = attendanceList.size();
+            uploadCounter = 0;
             Log.i(Constants.TAG, String.format("Syncing %s entries...", entry_count));
             for (Attendance attendance : attendanceList) {
                 UpdateAttendance updateAttendance = new UpdateAttendance(StoredLocationUploader.this, attendance);
@@ -47,9 +47,15 @@ public class StoredLocationUploader implements ServerUpdateResponseHandler {
     public void handleRegisterAttendanceResponse(Response response, Attendance attendance) {
         boolean isSuccess = (null != response && response.message().equals(Constants.MSG_OK));
         if (isSuccess) {
+            uploadCounter++;
             entry_count--;
+            Log.i(Constants.TAG, "Entries uploaded: " + uploadCounter);
             checkEntriesUploaded();
         }
+    }
+
+    public boolean entriesPresent() {
+        return FileHandler.locationFileExists(context);
     }
 
     private void checkEntriesUploaded() {

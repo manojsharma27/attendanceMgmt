@@ -194,6 +194,10 @@ public class LoginActivity extends AppCompatActivity {
         }
     }
 
+    public void showTestDialog(View view) {
+        Utility.showCustomMessageDialog(this, String.format("%1$s%1$s%1$s%1$s%1$s%1$s%1$s%1$s%1$s%1$s%1$s%1$s%1$s%1$s","This is test message... \n"), R.mipmap.right);
+    }
+
     /**
      * Represents an asynchronous login/registration task used to authenticate
      * the user.
