@@ -7,7 +7,6 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentSender;
-import android.content.pm.PackageManager;
 import android.location.Location;
 import android.os.Bundle;
 import android.os.Handler;
@@ -15,7 +14,6 @@ import android.provider.Settings;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
-import android.telephony.TelephonyManager;
 import android.text.InputType;
 import android.util.Log;
 import android.view.Menu;
@@ -79,7 +77,6 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
     private final static int REQUEST_CHECK_SETTINGS = 2000;
 
     private BackgroundTaskHandler backgroundTaskHandler;
-    private TelephonyManager telephonyManager;
     private Location mLastLocation;
 
     // Google client to interact with Google API
@@ -98,9 +95,10 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
     protected void onCreate(Bundle bundle) {
         super.onCreate(bundle);
         setContentView(R.layout.reg_attend_temp);
-        context = RegisterAttendanceActivity.this;
+        context = RegisterAttendanceActivity.this.getApplicationContext();
         onNewIntent(getIntent());
         String empName = this.getIntent().getExtras().getString(Constants.EMP_NAME);
+        deviceId = Utility.readPref(context, Constants.DEVICE_ID);
 
         backgroundTaskHandler = new BackgroundTaskHandler(context);
         tvTodoMsg = findViewById(R.id.tvTodoMsg);
@@ -132,9 +130,6 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
         if (checkPlayServices()) {
             buildGoogleApiClient();
             getLocation();
-        }
-        if (checkAndRequestDeviceIdPermission()) {
-            populateDeviceId();
         }
     }
 
@@ -245,36 +240,8 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
         return true;
     }
 
-    // Code for fetching deviceId
-
-    private void configureTelephonyManager() {
-        if (null == telephonyManager) {
-            telephonyManager = (TelephonyManager) getSystemService(TELEPHONY_SERVICE);
-        }
-    }
-
-    private void populateDeviceId() {
-        configureTelephonyManager();
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED) {
-            deviceId = telephonyManager.getDeviceId();
-        }
-
-        if (null == deviceId || deviceId.contains("000000")) {
-            deviceId = Settings.Secure.getString(getApplicationContext().getContentResolver(), Settings.Secure.ANDROID_ID);
-        }
-        Log.d(Constants.TAG, "DeviceId: " + deviceId);
-    }
-
-    private boolean checkAndRequestDeviceIdPermission() {
-        if (ActivityCompat.checkSelfPermission(context, Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions((Activity) context, new String[]{Manifest.permission.READ_PHONE_STATE}, PHONE_STATE_PERMISSION_REQUEST_CODE);
-            return false;
-        }
-        return true;
-    }
 
     private void doRegistration(String empId) {
-        checkAndRequestDeviceIdPermission();
         getLocation();
         if (mLastLocation != null) {
             latitude = mLastLocation.getLatitude();
@@ -405,17 +372,20 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
         // TODO : get uniqueId for app installation
         attendance.setLat(latitude);
         attendance.setLon(longitude);
-        String address = AddressLocator.populateAddress(this.getApplicationContext(), latitude, longitude);
+        String address = AddressLocator.populateAddress(context, latitude, longitude);
         attendance.setAddress(address);
-        if (null == telephonyManager) {
-            checkAndRequestDeviceIdPermission();
-            populateDeviceId();
+        if (StringUtils.isEmpty(deviceId)) {
+            Utility.toastMsg(context, "Failed to fetch deviceId");
         }
         attendance.setDevId(deviceId);
 
         // set deviceId and empId in preferences for background update
-        Utility.writePref(context, Constants.EMP_ID, attendance.getId());
-        Utility.writePref(context, Constants.DEVICE_ID, attendance.getDevId());
+        if (StringUtils.isEmpty(Utility.readPref(context, Constants.EMP_ID))) {
+            Utility.writePref(context, Constants.EMP_ID, attendance.getId());
+        }
+        if (StringUtils.isEmpty(Utility.readPref(context, Constants.DEVICE_ID))) {
+            Utility.writePref(context, Constants.DEVICE_ID, attendance.getDevId());
+        }
 
         UpdateAttendance updateAttendance = new UpdateAttendance(RegisterAttendanceActivity.this, attendance);
         updateAttendance.setContext(RegisterAttendanceActivity.this.getApplicationContext());

@@ -26,6 +26,7 @@ public class Constants {
     public static final String PUNCHED_OUT = "punchedOut";
 
     public static final String TEST_SERVICE_URL = "";
+    public static final String SIGN_UP_ENDPOINT = "/index";
     public static final String AUTHENTICATE_PIN_ENDPOINT = "/verifypin?p=%s";
     public static final String REGISTER_ATTENDANCE_ENDPOINT = "/registerAttendance";
 

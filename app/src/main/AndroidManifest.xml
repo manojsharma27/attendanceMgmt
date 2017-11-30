@@ -37,6 +37,15 @@
             android:name=".service.LocationMonitoringService"
             android:exported="false"
             android:process="ms.app.service.locationMonitoringService" />
+
+        <activity
+            android:name=".activitiy.SignUpActivity"
+            android:parentActivityName=".activitiy.LoginActivity"
+            android:windowSoftInputMode="adjustResize">
+            <meta-data
+                android:name="android.support.PARENT_ACTIVITY"
+                android:value=".activitiy.LoginActivity" />
+        </activity>
     </application>
 
 </manifest>
