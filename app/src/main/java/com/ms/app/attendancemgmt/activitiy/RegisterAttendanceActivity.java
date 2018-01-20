@@ -536,7 +536,7 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
 
     private void updatePunchUI(boolean setPunchedIn) {
         String action = setPunchedIn ? "Punch In" : "Punch Out";
-        int color = getColor(setPunchedIn ? R.color.colorGreen : R.color.colorOrange);
+        int color = getResources().getColor(setPunchedIn ? R.color.colorGreen : R.color.colorOrange);
         String startStop = setPunchedIn ? "start" : "stop";
 
         tvTodoMsg.setText(String.format("Tap '%s' to %s regular punching in background", action, startStop));

@@ -28,6 +28,7 @@ import android.view.inputmethod.EditorInfo;
 import android.widget.Button;
 import android.widget.EditText;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.ms.app.attendancemgmt.R;
 import com.ms.app.attendancemgmt.location.StoredLocationUploader;
@@ -325,8 +326,9 @@ public class SignUpActivity extends AppCompatActivity {
     }
 
     private void showSignUpSuccessDialog() {
-        Utility.showMessageDialog(SignUpActivity.this, "Thanks for registering on '" + getString(R.string.app_name) + "'.\n"
-                + "Please reach out to system administrator for login pin.", R.mipmap.right);
+        Utility.toastMsg(getApplicationContext(), "Not supported yet");
+//        Utility.showMessageDialog(SignUpActivity.this, "Thanks for registering on '" + getString(R.string.app_name) + "'.\n"
+//                + "Please reach out to system administrator for login pin.", R.mipmap.right);
         txtEmpId.setText("");
     }
 
