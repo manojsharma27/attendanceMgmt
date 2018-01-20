@@ -106,7 +106,8 @@
                 android:textAllCaps="false"
                 android:textColor="@color/colorPrimaryDark"
                 android:textSize="15sp"
-                android:textStyle="normal" />
+                android:textStyle="normal"
+                android:visibility="gone"/>
         </RelativeLayout>
 
         <Button

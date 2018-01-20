@@ -50,7 +50,6 @@ public class LocationMonitoringService extends Service implements
     public static final String ACTION_LOCATION_BROADCAST = "LocationMonitoringService-LocationBroadcast";
     private TimerTask timerTask;
     private Timer timer;
-    private Long lastUpdateTime;
     private StoredLocationUploader storedLocationUploader;
 
     @Override
@@ -114,7 +113,6 @@ public class LocationMonitoringService extends Service implements
 
             startForeground(NOTIFICATION_ID_FOREGROUND_SERVICE, notification);
             // init uploader
-            lastUpdateTime = System.currentTimeMillis();
             storedLocationUploader = new StoredLocationUploader(this.getApplicationContext());
             configureLocationUpdateRequesterTask();
         } else if (action.equals(Constants.ACTION_STOP_FOREGROUND_LOCATION_SERVICE)) {
@@ -277,12 +275,13 @@ public class LocationMonitoringService extends Service implements
     }
 
     private boolean checkPunchIntervalElapsed() {
-        if (null == lastUpdateTime) {
+        String lastUpdateStr = Utility.readPref(getApplicationContext(), Constants.LAST_UPDATE_TO_SERVER_TIME);
+        if (StringUtils.isEmpty(lastUpdateStr)) {
             return true;
         }
-
+        long lastUpdateTime = Long.parseLong(lastUpdateStr);
 //        long lastUpdated = (null == lastUpdateTime) ? System.currentTimeMillis() : lastUpdateTime;
-        return System.currentTimeMillis() - lastUpdateTime >= Utility.getPunchingInterval(LocationMonitoringService.this.getApplicationContext());
+        return Utility.getPunchingInterval(LocationMonitoringService.this.getApplicationContext()) <= System.currentTimeMillis() - lastUpdateTime;
     }
 
     @Override
@@ -293,6 +292,7 @@ public class LocationMonitoringService extends Service implements
         String failedMsg = "Registration failed.\nUnable to connect to service.";
         if (isSuccess) {
             Log.i(Constants.TAG, successMsg);
+            Utility.writePref(getApplicationContext(), Constants.LAST_UPDATE_TO_SERVER_TIME, String.valueOf(System.currentTimeMillis()));
         } else {
             Log.e(Constants.TAG, failedMsg);
             // write location updates to file

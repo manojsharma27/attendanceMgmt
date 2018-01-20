@@ -261,6 +261,9 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
     }
 
     private void getLocation() {
+        if (null == mGoogleApiClient) {
+            buildGoogleApiClient();
+        }
         if (isPermissionGranted) {
             try {
                 mLastLocation = LocationServices.FusedLocationApi
@@ -395,15 +398,26 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
     @Override
     public void handleRegisterAttendanceResponse(Response response, Attendance attendance) {
         boolean isSuccess = (null != response && response.message().equals(Constants.MSG_OK));
+
+        String address = "";
+        if (isSuccess && StringUtils.isNotEmpty(attendance.getAddress())) {
+            address = attendance.getAddress();
+        } else {
+            address = AddressLocator.populateAddress(this.getApplicationContext(), attendance.getLat(), attendance.getLon());
+        }
+
         String time = Utility.getTime();
-        String address = AddressLocator.populateAddress(this.getApplicationContext(), attendance.getLat(), attendance.getLon());
         String successMsg = String.format(Constants.ATTEND_REG_LOC_MSG, time, address);
         String failedMsg = "Registration failed.\nUnable to connect to service.";
+
         Utility.showMessageDialog(RegisterAttendanceActivity.this, isSuccess ? successMsg : failedMsg, isSuccess ? R.mipmap.right : R.mipmap.wrong);
+
         successMsg = String.format(Constants.ATTEND_REG_TOAST_MSG, time);
         Utility.toastMsg(context, isSuccess ? successMsg : failedMsg);
 
-        if (!isSuccess) {
+        if (isSuccess) {
+            Utility.writePref(getApplicationContext(), Constants.LAST_UPDATE_TO_SERVER_TIME, String.valueOf(System.currentTimeMillis()));
+        } else {
             Log.i(Constants.TAG, "Failed to register to service, so recording in file.");
             FileHandler.writeAttendanceToFile(this.getApplicationContext(), attendance);
         }

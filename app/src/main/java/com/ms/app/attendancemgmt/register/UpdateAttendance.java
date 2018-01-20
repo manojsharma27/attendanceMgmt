@@ -38,10 +38,10 @@ public class UpdateAttendance {
         task.execute(attendance);
     }
 
-    private class AttendanceRegisterTask extends AsyncTask<Attendance, Integer, Response> {
+    private class AttendanceRegisterTask extends AsyncTask<Attendance, Integer, RegisterResponse> {
 
         @Override
-        protected Response doInBackground(Attendance... attendances) {
+        protected RegisterResponse doInBackground(Attendance... attendances) {
             if (!ArrayUtils.isEmpty(attendances) && null != attendances[0]) {
                 try {
                     Attendance attendance = attendances[0];
@@ -58,7 +58,7 @@ public class UpdateAttendance {
                             .build();
 
                     Response response = client.newCall(request).execute();
-                    return response;
+                    return new RegisterResponse(response, attendance);
 //                    Thread.sleep(1000);
 //                    return new Response.Builder()
 //                            .message(Constants.MSG_OK)
@@ -90,12 +90,16 @@ public class UpdateAttendance {
         }
 
         @Override
-        protected void onPostExecute(Response response) {
-            super.onPostExecute(response);
+        protected void onPostExecute(RegisterResponse regResp) {
+            super.onPostExecute(regResp);
             if (responseHandler instanceof RegisterAttendanceActivity) {
                 ((RegisterAttendanceActivity) responseHandler).showProgressBar(false);
             }
-            responseHandler.handleRegisterAttendanceResponse(response, attendance);
+            if (null != regResp) {
+                responseHandler.handleRegisterAttendanceResponse(regResp.response, regResp.attendance);
+            } else {
+                responseHandler.handleRegisterAttendanceResponse(null, attendance);
+            }
         }
 
         @Override
@@ -104,6 +108,16 @@ public class UpdateAttendance {
             if (responseHandler instanceof RegisterAttendanceActivity) {
                 ((RegisterAttendanceActivity) responseHandler).updateProgressBar(values[0]);
             }
+        }
+    }
+
+    private class RegisterResponse {
+        private Response response;
+        private Attendance attendance;
+
+        private RegisterResponse(Response response, Attendance attendance) {
+            this.response = response;
+            this.attendance = attendance;
         }
     }
 
@@ -126,6 +140,7 @@ public class UpdateAttendance {
             attendance.setDevId(devId);
             Log.i(Constants.TAG, "devId set to " + devId);
         }
+
         return attendance;
     }
 }
