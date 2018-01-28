@@ -5,11 +5,14 @@ import android.os.AsyncTask;
 import android.util.Log;
 
 import com.ms.app.attendancemgmt.activitiy.RegisterAttendanceActivity;
+import com.ms.app.attendancemgmt.location.AddressLocator;
+import com.ms.app.attendancemgmt.location.offline.ModelEntry;
 import com.ms.app.attendancemgmt.model.Attendance;
 import com.ms.app.attendancemgmt.util.Constants;
 import com.ms.app.attendancemgmt.util.Utility;
 
 import org.apache.commons.lang3.ArrayUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import okhttp3.MediaType;
 import okhttp3.OkHttpClient;
@@ -18,13 +21,13 @@ import okhttp3.RequestBody;
 import okhttp3.Response;
 
 public class UpdateAttendance {
-    private Attendance attendance;
+    private ModelEntry modelEntry;
     private ServerUpdateResponseHandler responseHandler;
     private Context context;
 
-    public UpdateAttendance(ServerUpdateResponseHandler responseHandler, Attendance attendance) {
+    public UpdateAttendance(ServerUpdateResponseHandler responseHandler, ModelEntry modelEntry) {
         this.responseHandler = responseHandler;
-        this.attendance = attendance;
+        this.modelEntry = modelEntry;
     }
 
     public void setContext(Context context) {
@@ -33,16 +36,19 @@ public class UpdateAttendance {
 
     public void register() {
         AttendanceRegisterTask task = new AttendanceRegisterTask();
-        task.execute(attendance);
+        task.execute(modelEntry);
     }
 
-    private class AttendanceRegisterTask extends AsyncTask<Attendance, Integer, Response> {
+    private class AttendanceRegisterTask extends AsyncTask<ModelEntry, Integer, RegisterResponse> {
 
         @Override
-        protected Response doInBackground(Attendance... attendances) {
-            if (!ArrayUtils.isEmpty(attendances)) {
+        protected RegisterResponse doInBackground(ModelEntry... entries) {
+            if (!ArrayUtils.isEmpty(entries) && null != entries[0]) {
                 try {
-                    String json = Utility.getObjectMapper().writeValueAsString(attendances[0]);
+                    ModelEntry modelEntry = entries[0];
+                    Attendance attendance = modelEntry.getAttendance();
+                    attendance = populateDataIfNeeded(attendance);
+                    String json = Utility.getObjectMapper().writeValueAsString(attendance);
                     Log.i(Constants.TAG, "Registering " + json);
                     String finalUrl = Utility.getServiceUrl(context) + Constants.REGISTER_ATTENDANCE_ENDPOINT;
                     OkHttpClient client = new OkHttpClient();
@@ -53,7 +59,9 @@ public class UpdateAttendance {
                             .post(body)
                             .build();
 
-                    return client.newCall(request).execute();
+                    Response response = client.newCall(request).execute();
+                    modelEntry.setAttendance(attendance);
+                    return new RegisterResponse(response, modelEntry);
 //                    Thread.sleep(1000);
 //                    return new Response.Builder()
 //                            .message(Constants.MSG_OK)
@@ -85,12 +93,16 @@ public class UpdateAttendance {
         }
 
         @Override
-        protected void onPostExecute(Response response) {
-            super.onPostExecute(response);
+        protected void onPostExecute(RegisterResponse regResp) {
+            super.onPostExecute(regResp);
             if (responseHandler instanceof RegisterAttendanceActivity) {
                 ((RegisterAttendanceActivity) responseHandler).showProgressBar(false);
             }
-            responseHandler.handleRegisterAttendanceResponse(response, attendance);
+            if (null != regResp) {
+                responseHandler.handleRegisterAttendanceResponse(regResp.response, regResp.modelEntry);
+            } else {
+                responseHandler.handleRegisterAttendanceResponse(null, modelEntry);
+            }
         }
 
         @Override
@@ -100,5 +112,38 @@ public class UpdateAttendance {
                 ((RegisterAttendanceActivity) responseHandler).updateProgressBar(values[0]);
             }
         }
+    }
+
+    private class RegisterResponse {
+        private Response response;
+        private ModelEntry modelEntry;
+
+        private RegisterResponse(Response response, ModelEntry modelEntry) {
+            this.response = response;
+            this.modelEntry = modelEntry;
+        }
+    }
+
+    private Attendance populateDataIfNeeded(Attendance attendance) {
+        if (StringUtils.isEmpty(attendance.getAddress()) && Utility.checkInternetConnected(context)) {
+            Log.i(Constants.TAG, "Address was blank... ");
+            String address = AddressLocator.populateAddress(context, attendance.getLat(), attendance.getLon());
+            attendance.setAddress(address);
+            Log.i(Constants.TAG, "Address set to " + address);
+        }
+
+        if (StringUtils.isEmpty(attendance.getId())) {
+            String empid = Utility.readPref(context.getApplicationContext(), Constants.EMP_ID);
+            attendance.setId(empid);
+            Log.i(Constants.TAG, "empId set to " + empid);
+        }
+
+        if (StringUtils.isEmpty(attendance.getDevId())) {
+            String devId = Utility.readPref(context.getApplicationContext(), Constants.DEVICE_ID);
+            attendance.setDevId(devId);
+            Log.i(Constants.TAG, "devId set to " + devId);
+        }
+
+        return attendance;
     }
 }

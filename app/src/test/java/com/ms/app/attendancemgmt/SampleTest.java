@@ -9,7 +9,6 @@ import com.ms.app.attendancemgmt.util.Utility;
 
 import org.apache.commons.lang3.time.DurationFormatUtils;
 import org.junit.Test;
-import org.junit.runner.RunWith;
 
 import java.io.IOException;
 import java.util.Arrays;

@@ -1,13 +1,14 @@
 <ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools"
-    android:layout_width="match_parent"
+    android:layout_width="fill_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
-    tools:context="com.ms.app.attendancemgmt.activitiy.LoginActivity">
+    tools:context=".activitiy.SignUpActivity">
+
 
     <RelativeLayout
         android:layout_width="match_parent"
-        android:layout_height="wrap_content"
+        android:layout_height="match_parent"
         android:background="@color/colorWhite"
         android:fitsSystemWindows="true"
         android:gravity="center_horizontal"
@@ -18,7 +19,7 @@
         android:paddingTop="@dimen/activity_vertical_margin">
 
         <ProgressBar
-            android:id="@+id/login_progress"
+            android:id="@+id/signup_progress"
             style="?android:attr/progressBarStyleLarge"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
@@ -27,7 +28,7 @@
             android:visibility="gone" />
 
         <RelativeLayout
-            android:id="@+id/full_login_form"
+            android:id="@+id/full_signup_form"
             android:layout_width="match_parent"
             android:layout_height="fill_parent"
             android:orientation="vertical">
@@ -69,11 +70,11 @@
                     android:layout_height="wrap_content">
 
                     <EditText
-                        android:id="@+id/pin"
+                        android:id="@+id/txtEmpId"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:hint="@string/prompt_pin"
-                        android:inputType="numberPassword"
+                        android:hint="@string/prompt_emp_id"
+                        android:inputType="textCapCharacters"
                         android:maxLines="1"
                         android:textAlignment="center"
                         android:textSize="32sp" />
@@ -81,48 +82,18 @@
                 </android.support.design.widget.TextInputLayout>
 
                 <Button
-                    android:id="@+id/btnLogin"
+                    android:id="@+id/btnSignUp"
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
                     android:layout_marginTop="20dp"
                     android:background="@color/colorBlue"
-                    android:text="@string/action_login"
+                    android:text="@string/action_signup"
                     android:textAllCaps="false"
                     android:textColor="@color/colorWhite"
                     android:textSize="20sp"
                     android:textStyle="normal" />
 
             </LinearLayout>
-
-            <Button
-                android:id="@+id/btnSignUp"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:layout_alignParentBottom="true"
-                android:layout_alignParentEnd="true"
-                android:layout_below="@+id/pin_login_form"
-                android:background="@android:color/transparent"
-                android:text="@string/action_signup"
-                android:textAllCaps="false"
-                android:textColor="@color/colorPrimaryDark"
-                android:textSize="15sp"
-                android:textStyle="normal"
-                android:visibility="gone"/>
         </RelativeLayout>
-
-        <Button
-            android:id="@+id/btnTestDialog"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="20dp"
-            android:background="@color/colorBlue"
-            android:onClick="showTestDialog"
-            android:text="Show dialog"
-            android:textAllCaps="false"
-            android:textColor="@color/colorWhite"
-            android:textSize="20sp"
-            android:textStyle="normal"
-            android:visibility="gone" />
-
     </RelativeLayout>
 </ScrollView>

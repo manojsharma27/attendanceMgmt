@@ -7,7 +7,6 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.IntentSender;
-import android.content.pm.PackageManager;
 import android.location.Location;
 import android.os.Bundle;
 import android.os.Handler;
@@ -15,7 +14,6 @@ import android.provider.Settings;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
-import android.telephony.TelephonyManager;
 import android.text.InputType;
 import android.util.Log;
 import android.view.Menu;
@@ -41,7 +39,14 @@ import com.google.android.gms.location.LocationSettingsStatusCodes;
 import com.ms.app.attendancemgmt.R;
 import com.ms.app.attendancemgmt.location.AddressLocator;
 import com.ms.app.attendancemgmt.location.PermissionUtils;
-import com.ms.app.attendancemgmt.location.StoredLocationUploader;
+import com.ms.app.attendancemgmt.location.offline.ModelEntry;
+import com.ms.app.attendancemgmt.location.offline.OfflineLocationHandler;
+import com.ms.app.attendancemgmt.location.offline.db.processor.DbReadTask;
+import com.ms.app.attendancemgmt.location.offline.db.processor.DbWriteTask;
+import com.ms.app.attendancemgmt.location.offline.db.processor.OfflineDBLocationResponseHandler;
+import com.ms.app.attendancemgmt.location.offline.db.processor.OfflineDbAsyncTasksProcessor;
+import com.ms.app.attendancemgmt.location.storedupload.DbStoredLocationUploader;
+import com.ms.app.attendancemgmt.location.storedupload.StoredLocationUploader;
 import com.ms.app.attendancemgmt.model.Attendance;
 import com.ms.app.attendancemgmt.register.ServerUpdateResponseHandler;
 import com.ms.app.attendancemgmt.register.UpdateAttendance;
@@ -79,7 +84,6 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
     private final static int REQUEST_CHECK_SETTINGS = 2000;
 
     private BackgroundTaskHandler backgroundTaskHandler;
-    private TelephonyManager telephonyManager;
     private Location mLastLocation;
 
     // Google client to interact with Google API
@@ -98,9 +102,10 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
     protected void onCreate(Bundle bundle) {
         super.onCreate(bundle);
         setContentView(R.layout.reg_attend_temp);
-        context = RegisterAttendanceActivity.this;
+        context = RegisterAttendanceActivity.this.getApplicationContext();
         onNewIntent(getIntent());
         String empName = this.getIntent().getExtras().getString(Constants.EMP_NAME);
+        deviceId = Utility.readPref(context, Constants.DEVICE_ID);
 
         backgroundTaskHandler = new BackgroundTaskHandler(context);
         tvTodoMsg = findViewById(R.id.tvTodoMsg);
@@ -132,9 +137,6 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
         if (checkPlayServices()) {
             buildGoogleApiClient();
             getLocation();
-        }
-        if (checkAndRequestDeviceIdPermission()) {
-            populateDeviceId();
         }
     }
 
@@ -245,36 +247,8 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
         return true;
     }
 
-    // Code for fetching deviceId
-
-    private void configureTelephonyManager() {
-        if (null == telephonyManager) {
-            telephonyManager = (TelephonyManager) getSystemService(TELEPHONY_SERVICE);
-        }
-    }
-
-    private void populateDeviceId() {
-        configureTelephonyManager();
-        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED) {
-            deviceId = telephonyManager.getDeviceId();
-        }
-
-        if (null == deviceId || deviceId.contains("000000")) {
-            deviceId = Settings.Secure.getString(getApplicationContext().getContentResolver(), Settings.Secure.ANDROID_ID);
-        }
-        Log.d(Constants.TAG, "DeviceId: " + deviceId);
-    }
-
-    private boolean checkAndRequestDeviceIdPermission() {
-        if (ActivityCompat.checkSelfPermission(context, Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) {
-            ActivityCompat.requestPermissions((Activity) context, new String[]{Manifest.permission.READ_PHONE_STATE}, PHONE_STATE_PERMISSION_REQUEST_CODE);
-            return false;
-        }
-        return true;
-    }
 
     private void doRegistration(String empId) {
-        checkAndRequestDeviceIdPermission();
         getLocation();
         if (mLastLocation != null) {
             latitude = mLastLocation.getLatitude();
@@ -294,6 +268,9 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
     }
 
     private void getLocation() {
+        if (null == mGoogleApiClient) {
+            buildGoogleApiClient();
+        }
         if (isPermissionGranted) {
             try {
                 mLastLocation = LocationServices.FusedLocationApi
@@ -405,36 +382,69 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
         // TODO : get uniqueId for app installation
         attendance.setLat(latitude);
         attendance.setLon(longitude);
-        if (null == telephonyManager) {
-            checkAndRequestDeviceIdPermission();
-            populateDeviceId();
+        String address = AddressLocator.populateAddress(context, latitude, longitude);
+        attendance.setAddress(address);
+        if (StringUtils.isEmpty(deviceId)) {
+            Utility.toastMsg(context, "Failed to fetch deviceId");
         }
         attendance.setDevId(deviceId);
 
         // set deviceId and empId in preferences for background update
-        Utility.writePref(context, Constants.EMP_ID, attendance.getId());
-        Utility.writePref(context, Constants.DEVICE_ID, attendance.getDevId());
+        if (StringUtils.isEmpty(Utility.readPref(context, Constants.EMP_ID))) {
+            Utility.writePref(context, Constants.EMP_ID, attendance.getId());
+        }
+        if (StringUtils.isEmpty(Utility.readPref(context, Constants.DEVICE_ID))) {
+            Utility.writePref(context, Constants.DEVICE_ID, attendance.getDevId());
+        }
 
-        UpdateAttendance updateAttendance = new UpdateAttendance(RegisterAttendanceActivity.this, attendance);
-        updateAttendance.setContext(getApplicationContext());
+        ModelEntry modelEntry = OfflineLocationHandler.prepareModelEntry(attendance);
+        UpdateAttendance updateAttendance = new UpdateAttendance(RegisterAttendanceActivity.this, modelEntry);
+        updateAttendance.setContext(RegisterAttendanceActivity.this.getApplicationContext());
         updateAttendance.register();
     }
 
     @Override
-    public void handleRegisterAttendanceResponse(Response response, Attendance attendance) {
+    public void handleRegisterAttendanceResponse(Response response, ModelEntry modelEntry) {
+        Attendance attendance = modelEntry.getAttendance();
         boolean isSuccess = (null != response && response.message().equals(Constants.MSG_OK));
+
+        String address = "";
+        if (isSuccess && StringUtils.isNotEmpty(attendance.getAddress())) {
+            address = attendance.getAddress();
+        } else {
+            address = AddressLocator.populateAddress(this.getApplicationContext(), attendance.getLat(), attendance.getLon());
+            attendance.setAddress(address);
+        }
+
         String time = Utility.getTime();
-        String address = AddressLocator.populateAddress(this.getApplicationContext(), attendance.getLat(), attendance.getLon());
         String successMsg = String.format(Constants.ATTEND_REG_LOC_MSG, time, address);
         String failedMsg = "Registration failed.\nUnable to connect to service.";
+
         Utility.showMessageDialog(RegisterAttendanceActivity.this, isSuccess ? successMsg : failedMsg, isSuccess ? R.mipmap.right : R.mipmap.wrong);
+
         successMsg = String.format(Constants.ATTEND_REG_TOAST_MSG, time);
         Utility.toastMsg(context, isSuccess ? successMsg : failedMsg);
 
-        if (!isSuccess) {
+        if (isSuccess) {
+            Utility.writePref(getApplicationContext(), Constants.LAST_UPDATE_TO_SERVER_TIME, String.valueOf(System.currentTimeMillis()));
+        } else {
             Log.i(Constants.TAG, "Failed to register to service, so recording in file.");
-            FileHandler.writeAttendanceToFile(this.getApplicationContext(), attendance);
+            writeToOfflineDb(modelEntry);
         }
+    }
+
+    private void writeToOfflineDb(final ModelEntry modelEntry) {
+        DbWriteTask writeTask = new DbWriteTask() {
+            @Override
+            public void process() {
+                OfflineLocationHandler.writeEntryToDB(RegisterAttendanceActivity.this.getApplicationContext(), modelEntry);
+            }
+        };
+
+        OfflineDbAsyncTasksProcessor processor = new OfflineDbAsyncTasksProcessor(writeTask);
+        processor.write();
+
+        Log.i(Constants.TAG, "Recorded in DB : " + modelEntry.toString());
     }
 
     @Override
@@ -451,24 +461,13 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
                 backgroundTaskHandler.stopLocationMonitoringService();
                 return true;
             case R.id.mitemReadStoredLocations:
-                List<Attendance> attendances = FileHandler.readAttendanceFromFile(this.getApplicationContext());
-                if (CollectionUtils.isEmpty(attendances)) {
-                    Utility.toastMsg(getApplicationContext(), "No stored locations to show");
-                    return true;
-                }
-                StringBuilder sb = new StringBuilder();
-                sb.append("Latitude, Longitude:\n\n");
-                for (Attendance attendance : attendances) {
-                    sb.append(String.format("( %s, %s )", attendance.getLat(), attendance.getLon())).append("\n");
-                }
-                Utility.showMessageDialog(RegisterAttendanceActivity.this, sb.toString());
-                return true;
+                return readAndShowOfflineDbLocations();
             case R.id.mitemSyncStoredLocations:
                 if (!Utility.checkInternetConnected(this.getApplicationContext())) {
                     Utility.toastMsg(getApplicationContext(), "Failed to sync stored locations");
                     return true;
                 }
-                StoredLocationUploader uploader = new StoredLocationUploader(this.getApplicationContext());
+                StoredLocationUploader uploader = new DbStoredLocationUploader(this.getApplicationContext());
                 uploader.checkLocationsAndUpload();
                 Utility.toastMsg(this.getApplicationContext(), "Started background sync of stored locations.");
                 return true;
@@ -489,6 +488,42 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
                 return true;
         }
         return super.onOptionsItemSelected(item);
+    }
+
+    private boolean readAndShowOfflineDbLocations() {
+        DbReadTask pendingDbReadTask = new DbReadTask() {
+            @Override
+            public List<ModelEntry> process() {
+                return OfflineLocationHandler.pendingEntries(RegisterAttendanceActivity.this.getApplicationContext());
+            }
+        };
+
+        OfflineDBLocationResponseHandler dbLocationsHandler = new OfflineDBLocationResponseHandler() {
+            @Override
+            public void handleDbLocationResponse(List<ModelEntry> modelEntries) {
+                List<Attendance> attendances = new ArrayList<>(); //FileHandler.readAttendanceFromFile(this.getApplicationContext());
+
+                for (ModelEntry entry : modelEntries) {
+                    attendances.add(entry.getAttendance());
+                }
+
+                if (CollectionUtils.isEmpty(attendances)) {
+                    Utility.toastMsg(getApplicationContext(), "No stored locations to show");
+                    return;
+                }
+
+                StringBuilder sb = new StringBuilder();
+                sb.append("Latitude, Longitude:\n\n");
+                for (Attendance attendance : attendances) {
+                    sb.append(String.format("( %s, %s )", attendance.getLat(), attendance.getLon())).append("\n");
+                }
+                Utility.showMessageDialog(RegisterAttendanceActivity.this, sb.toString());
+            }
+        };
+
+        OfflineDbAsyncTasksProcessor reader = new OfflineDbAsyncTasksProcessor(pendingDbReadTask, dbLocationsHandler);
+        reader.read();
+        return true;
     }
 
     private Boolean exit = false;
@@ -564,7 +599,7 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
 
     private void updatePunchUI(boolean setPunchedIn) {
         String action = setPunchedIn ? "Punch In" : "Punch Out";
-        int color = getColor(setPunchedIn ? R.color.colorGreen : R.color.colorOrange);
+        int color = getResources().getColor(setPunchedIn ? R.color.colorGreen : R.color.colorOrange);
         String startStop = setPunchedIn ? "start" : "stop";
 
         tvTodoMsg.setText(String.format("Tap '%s' to %s regular punching in background", action, startStop));

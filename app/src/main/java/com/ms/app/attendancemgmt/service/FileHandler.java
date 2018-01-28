@@ -132,6 +132,9 @@ public class FileHandler {
     }
 
     public static boolean locationFileExists(Context context) {
+        if (null == context) {
+            return false;
+        }
         File file = new File(getFileName(context));
         return file.exists() && file.isFile();
     }

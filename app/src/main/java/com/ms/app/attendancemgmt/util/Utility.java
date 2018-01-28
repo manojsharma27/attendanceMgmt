@@ -38,6 +38,7 @@ import java.text.SimpleDateFormat;
 import java.util.Calendar;
 import java.util.Date;
 import java.util.TimeZone;
+import java.util.UUID;
 import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Executors;
@@ -109,9 +110,6 @@ public class Utility {
 	 * message
 	 */
     public static void showMessageDialog(Activity activity, String msg, int imgId) {
-        showCustomMessageDialog(activity, msg, imgId);
-        if (true)
-            return;
         try {
             AlertDialog.Builder builder = new AlertDialog.Builder(activity);
 
@@ -324,5 +322,9 @@ public class Utility {
         mLocationRequest.setFastestInterval(Constants.FASTEST_LOCATION_INTERVAL);
         mLocationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
         return mLocationRequest;
+    }
+
+    public static String randomUUID() {
+        return UUID.randomUUID().toString();
     }
 }

@@ -1,5 +1,6 @@
 package com.ms.app.attendancemgmt.activitiy;
 
+import android.Manifest;
 import android.animation.Animator;
 import android.animation.AnimatorListenerAdapter;
 import android.annotation.TargetApi;
@@ -7,12 +8,16 @@ import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.pm.PackageManager;
 import android.os.AsyncTask;
 import android.os.Build;
 import android.os.Bundle;
+import android.provider.Settings;
 import android.support.annotation.NonNull;
 import android.support.annotation.Nullable;
+import android.support.v4.app.ActivityCompat;
 import android.support.v7.app.AppCompatActivity;
+import android.telephony.TelephonyManager;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.KeyEvent;
@@ -20,6 +25,7 @@ import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
 import android.view.View.OnClickListener;
+import android.view.WindowManager;
 import android.view.inputmethod.EditorInfo;
 import android.widget.Button;
 import android.widget.EditText;
@@ -48,13 +54,10 @@ public class LoginActivity extends AppCompatActivity {
     /**
      * TODO:
      * set mac id - on hold
-     * 5min punch interval, by default - done
-     * handle background location sync in bkg
-     * close app on punch out
-     * punch interval to be configured by login response
      */
 
     private static final int LOGIN_DELAY = 1000;
+    private static final int PHONE_STATE_PERMISSION_REQUEST_CODE = 192;
     private UserLoginTask mAuthTask = null;
 
     // UI references.
@@ -63,6 +66,8 @@ public class LoginActivity extends AppCompatActivity {
     private View mLoginFormView;
     private String empName;
     private String empId;
+    private String deviceId;
+    private TelephonyManager telephonyManager;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -83,7 +88,7 @@ public class LoginActivity extends AppCompatActivity {
         txtPin.setOnEditorActionListener(new TextView.OnEditorActionListener() {
             @Override
             public boolean onEditorAction(TextView textView, int id, KeyEvent keyEvent) {
-                if (id == R.id.btnLogin || id == EditorInfo.IME_NULL) {
+                if ((id == R.id.btnLogin || id == EditorInfo.IME_NULL) && keyEvent.getAction() == KeyEvent.ACTION_DOWN) {
                     attemptLogin();
                     return true;
                 }
@@ -99,8 +104,52 @@ public class LoginActivity extends AppCompatActivity {
             }
         });
 
+        Button btnSignUp = findViewById(R.id.btnSignUp);
+        btnSignUp.setOnClickListener(new OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                loadSignUpActivity();
+            }
+        });
+
         mLoginFormView = findViewById(R.id.full_login_form);
         mProgressView = findViewById(R.id.login_progress);
+        if (checkAndRequestDeviceIdPermission()) {
+            populateDeviceId();
+        }
+
+        getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_VISIBLE | WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
+    }
+// Code for fetching deviceId
+
+    private void configureTelephonyManager() {
+        if (null == telephonyManager) {
+            telephonyManager = (TelephonyManager) getSystemService(TELEPHONY_SERVICE);
+        }
+    }
+
+    private void populateDeviceId() {
+        configureTelephonyManager();
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.READ_PHONE_STATE) == PackageManager.PERMISSION_GRANTED) {
+            deviceId = telephonyManager.getDeviceId();
+        }
+
+        if (null == deviceId || deviceId.contains("000000")) {
+            deviceId = Settings.Secure.getString(getApplicationContext().getContentResolver(), Settings.Secure.ANDROID_ID);
+        }
+
+        if (!StringUtils.isEmpty(deviceId)) {
+            Utility.writePref(LoginActivity.this.getApplicationContext(), Constants.DEVICE_ID, deviceId);
+        }
+        Log.d(Constants.TAG, "DeviceId: " + deviceId);
+    }
+
+    private boolean checkAndRequestDeviceIdPermission() {
+        if (ActivityCompat.checkSelfPermission(LoginActivity.this, Manifest.permission.READ_PHONE_STATE) != PackageManager.PERMISSION_GRANTED) {
+            ActivityCompat.requestPermissions((Activity) LoginActivity.this, new String[]{Manifest.permission.READ_PHONE_STATE}, PHONE_STATE_PERMISSION_REQUEST_CODE);
+            return false;
+        }
+        return true;
     }
 
     /**
@@ -194,6 +243,10 @@ public class LoginActivity extends AppCompatActivity {
         }
     }
 
+    public void showTestDialog(View view) {
+        Utility.showCustomMessageDialog(this, String.format("%1$s%1$s%1$s%1$s%1$s%1$s%1$s%1$s%1$s%1$s%1$s%1$s%1$s%1$s", "This is test message... \n"), R.mipmap.right);
+    }
+
     /**
      * Represents an asynchronous login/registration task used to authenticate
      * the user.
@@ -249,6 +302,7 @@ public class LoginActivity extends AppCompatActivity {
                     // write punch interval to preferences
                     if (0 != loginResp.getInterval()) {
                         long punchIntervalMillis = TimeUnit.SECONDS.toMillis(loginResp.getInterval());
+                        Log.i(Constants.TAG, "Stored punch interval : " + loginResp.getInterval() + "secs");
                         Utility.writePref(getApplicationContext(), Constants.PUNCHING_INTERVAL_KEY, String.valueOf(punchIntervalMillis));
                     }
                     return true;
@@ -302,6 +356,11 @@ public class LoginActivity extends AppCompatActivity {
         finish();
     }
 
+    private void loadSignUpActivity() {
+        Intent signUpIntent = new Intent(LoginActivity.this, SignUpActivity.class);
+        startActivity(signUpIntent);
+        finish();
+    }
 
     @Override
     public boolean onCreateOptionsMenu(Menu menu) {

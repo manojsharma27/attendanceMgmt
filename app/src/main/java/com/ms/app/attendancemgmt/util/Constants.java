@@ -26,6 +26,7 @@ public class Constants {
     public static final String PUNCHED_OUT = "punchedOut";
 
     public static final String TEST_SERVICE_URL = "";
+    public static final String SIGN_UP_ENDPOINT = "/index";
     public static final String AUTHENTICATE_PIN_ENDPOINT = "/verifypin?p=%s";
     public static final String REGISTER_ATTENDANCE_ENDPOINT = "/registerAttendance";
 
@@ -40,5 +41,6 @@ public class Constants {
 
     public static final String STARTED_BY = "started_by";
     public static final String ACTIVITY = "activity";
+    public static final String SELF = "self";
     public static final long START_LOC_MONITOR_SERVICE_INTERVAL = TimeUnit.SECONDS.toMillis(5); // start location update service after 5 sec of service auto restart
 }

@@ -38,7 +38,7 @@ public class BackgroundTaskHandler {
 
     public void startLocationMonitorService(Activity activity) {
         Intent intent = new Intent(activity, LocationMonitoringService.class);
-//        intent.putExtra(Constants.STARTED_BY, Constants.ACTIVITY);
+        intent.putExtra(Constants.STARTED_BY, Constants.ACTIVITY);
         intent.setAction(Constants.ACTION_START_FOREGROUND_LOCATION_SERVICE);
         activity.startService(intent);
         Utility.toastMsg(context.getApplicationContext(), "Background location updates to server started");
@@ -53,7 +53,7 @@ public class BackgroundTaskHandler {
     public static void startLocationMonitorServiceBySelf(Service service, long interval) {
         Intent intent = new Intent(service, LocationMonitoringService.class);
         intent.setAction(Constants.ACTION_START_FOREGROUND_LOCATION_SERVICE);
-//        intent.putExtra(Constants.STARTED_BY, Constants.SELF);
+        intent.putExtra(Constants.STARTED_BY, Constants.SELF);
 
         PendingIntent pendingIntent = PendingIntent.getService(service.getApplicationContext(), LocationMonitoringService.REQUEST_CODE, intent, FLAG_ONE_SHOT);
         AlarmManager alarmManager = (AlarmManager) service.getApplicationContext().getSystemService(Context.ALARM_SERVICE);
