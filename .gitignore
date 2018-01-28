@@ -26,3 +26,5 @@ build/
 .idea/
 .gradle/
 .gitignore
+
+*.DS_Store
