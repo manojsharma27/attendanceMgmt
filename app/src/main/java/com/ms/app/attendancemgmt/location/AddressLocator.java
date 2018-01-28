@@ -30,7 +30,7 @@ public class AddressLocator {
             addresses = geocoder.getFromLocation(latitude, longitude, 1);
             return addresses.get(0);
         } catch (IOException e) {
-            Log.e(Constants.TAG, "Exception in getLocationDetails - " + e.getMessage());
+            Log.e(Constants.TAG, "Failed to get address from co-ordinates - " + e.getMessage());
         }
         return null;
     }

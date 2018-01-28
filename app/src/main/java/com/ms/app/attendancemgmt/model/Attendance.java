@@ -1,6 +1,11 @@
 package com.ms.app.attendancemgmt.model;
 
+import android.arch.persistence.room.ColumnInfo;
+import android.arch.persistence.room.Ignore;
+import android.arch.persistence.room.TypeConverters;
+
 import com.fasterxml.jackson.annotation.JsonFormat;
+import com.ms.app.attendancemgmt.location.offline.RoomDateConverters;
 import com.ms.app.attendancemgmt.util.Constants;
 
 import java.util.Date;
@@ -12,15 +17,21 @@ public class Attendance {
 
     private String address;
     private String id;
+
+    @ColumnInfo(name = "dev_id")
     private String devId;
+
     private double lat;
     private double lon;
+
+    @TypeConverters(RoomDateConverters.class)
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = Constants.DATE_FORMAT, timezone = "UTC")
     private Date time;
 
     public Attendance() {
     }
 
+    @Ignore
     public Attendance(String id) {
         this.id = id;
     }

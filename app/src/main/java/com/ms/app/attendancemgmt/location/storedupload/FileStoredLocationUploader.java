@@ -1,8 +1,10 @@
-package com.ms.app.attendancemgmt.location;
+package com.ms.app.attendancemgmt.location.storedupload;
 
 import android.content.Context;
 import android.util.Log;
 
+import com.ms.app.attendancemgmt.location.offline.ModelEntry;
+import com.ms.app.attendancemgmt.location.offline.OfflineLocationHandler;
 import com.ms.app.attendancemgmt.model.Attendance;
 import com.ms.app.attendancemgmt.register.ServerUpdateResponseHandler;
 import com.ms.app.attendancemgmt.register.UpdateAttendance;
@@ -17,15 +19,14 @@ import okhttp3.Response;
  * Checks if there are any stored locations when internet is connected
  * If locations are present, uploads them to server one at a time
  */
-public class StoredLocationUploader implements ServerUpdateResponseHandler {
+public class FileStoredLocationUploader extends StoredLocationUploader implements ServerUpdateResponseHandler {
 
-    private Context context;
     private volatile int entry_count;
     private volatile int uploadCounter;
     private long uploadStartTime;
 
-    public StoredLocationUploader(Context context) {
-        this.context = context;
+    public FileStoredLocationUploader(Context context) {
+        super(context);
     }
 
     public void checkLocationsAndUpload() {
@@ -34,9 +35,11 @@ public class StoredLocationUploader implements ServerUpdateResponseHandler {
             uploadStartTime = System.currentTimeMillis();
             entry_count = attendanceList.size();
             uploadCounter = 0;
-            Log.i(Constants.TAG, String.format("Syncing %s entries...", entry_count));
+            Log.i(Constants.TAG, String.format("" +
+                    "Syncing %s entries...", entry_count));
             for (Attendance attendance : attendanceList) {
-                UpdateAttendance updateAttendance = new UpdateAttendance(StoredLocationUploader.this, attendance);
+                ModelEntry entry = OfflineLocationHandler.prepareModelEntry(attendance);
+                UpdateAttendance updateAttendance = new UpdateAttendance(FileStoredLocationUploader.this, entry);
                 updateAttendance.setContext(context);
                 updateAttendance.register();
             }
@@ -44,7 +47,7 @@ public class StoredLocationUploader implements ServerUpdateResponseHandler {
     }
 
     @Override
-    public void handleRegisterAttendanceResponse(Response response, Attendance attendance) {
+    public void handleRegisterAttendanceResponse(Response response, ModelEntry modelEntry) {
         boolean isSuccess = (null != response && response.message().equals(Constants.MSG_OK));
         if (isSuccess) {
             uploadCounter++;

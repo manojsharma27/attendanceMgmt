@@ -24,7 +24,12 @@ import com.google.android.gms.location.LocationServices;
 import com.ms.app.attendancemgmt.R;
 import com.ms.app.attendancemgmt.activitiy.RegisterAttendanceActivity;
 import com.ms.app.attendancemgmt.location.AddressLocator;
-import com.ms.app.attendancemgmt.location.StoredLocationUploader;
+import com.ms.app.attendancemgmt.location.offline.ModelEntry;
+import com.ms.app.attendancemgmt.location.offline.OfflineLocationHandler;
+import com.ms.app.attendancemgmt.location.offline.db.processor.DbWriteTask;
+import com.ms.app.attendancemgmt.location.offline.db.processor.OfflineDbAsyncTasksProcessor;
+import com.ms.app.attendancemgmt.location.storedupload.DbStoredLocationUploader;
+import com.ms.app.attendancemgmt.location.storedupload.StoredLocationUploader;
 import com.ms.app.attendancemgmt.model.Attendance;
 import com.ms.app.attendancemgmt.model.LocationModel;
 import com.ms.app.attendancemgmt.register.ServerUpdateResponseHandler;
@@ -113,7 +118,7 @@ public class LocationMonitoringService extends Service implements
 
             startForeground(NOTIFICATION_ID_FOREGROUND_SERVICE, notification);
             // init uploader
-            storedLocationUploader = new StoredLocationUploader(this.getApplicationContext());
+            storedLocationUploader = new DbStoredLocationUploader(this.getApplicationContext());
             configureLocationUpdateRequesterTask();
         } else if (action.equals(Constants.ACTION_STOP_FOREGROUND_LOCATION_SERVICE)) {
             Log.i(Constants.TAG, "Received Stop Foreground Intent");
@@ -215,10 +220,11 @@ public class LocationMonitoringService extends Service implements
     @Override
     public void onLocationChanged(Location location) {
         if (location != null) {
-            Log.v(Constants.TAG, "location changed");
+            Log.v(Constants.TAG, "location changed, checking interval elapsed");
             LocationModel locationModel = new LocationModel(location.getLatitude(), location.getLongitude());
             boolean isPunchIntervalElapsed = checkPunchIntervalElapsed();
             if (isPunchIntervalElapsed) {
+                Log.v(Constants.TAG, "Punch interval elapsed...");
                 sendUpdatesToService(locationModel);
             }
         }
@@ -262,21 +268,36 @@ public class LocationMonitoringService extends Service implements
         attendance.setLat(locationModel.getLatitude());
         attendance.setLon(locationModel.getLongitude());
         attendance.setTime(locationModel.getLogTime());
+        ModelEntry modelEntry = OfflineLocationHandler.prepareModelEntry(attendance);
 
         if (Utility.checkInternetConnected(LocationMonitoringService.this.getApplicationContext())) {
-            UpdateAttendance updateAttendance = new UpdateAttendance(LocationMonitoringService.this, attendance);
+            UpdateAttendance updateAttendance = new UpdateAttendance(LocationMonitoringService.this, modelEntry);
             updateAttendance.setContext(LocationMonitoringService.this.getApplicationContext());
             updateAttendance.register();
         } else {
             // write location updates to file
-            FileHandler.writeAttendanceToFile(LocationMonitoringService.this.getApplicationContext(), attendance);
-            Log.i(Constants.TAG, "Recorded in file : " + attendance.toString());
+            writeToOfflineDb(modelEntry);
         }
+    }
+
+    private void writeToOfflineDb(final ModelEntry modelEntry) {
+        DbWriteTask writeTask = new DbWriteTask() {
+            @Override
+            public void process() {
+                OfflineLocationHandler.writeEntryToDB(LocationMonitoringService.this.getApplicationContext(), modelEntry);
+            }
+        };
+
+        OfflineDbAsyncTasksProcessor processor = new OfflineDbAsyncTasksProcessor(writeTask);
+        processor.write();
+
+        Log.i(Constants.TAG, "Recorded in DB : " + modelEntry.toString());
     }
 
     private boolean checkPunchIntervalElapsed() {
         String lastUpdateStr = Utility.readPref(getApplicationContext(), Constants.LAST_UPDATE_TO_SERVER_TIME);
         if (StringUtils.isEmpty(lastUpdateStr)) {
+            Log.e(Constants.TAG, "lastupdatetoServerTime empty");
             return true;
         }
         long lastUpdateTime = Long.parseLong(lastUpdateStr);
@@ -285,7 +306,8 @@ public class LocationMonitoringService extends Service implements
     }
 
     @Override
-    public void handleRegisterAttendanceResponse(Response response, Attendance attendance) {
+    public void handleRegisterAttendanceResponse(Response response, ModelEntry modelEntry) {
+        Attendance attendance = modelEntry.getAttendance();
         boolean isSuccess = (null != response && response.message().equals(Constants.MSG_OK));
         String time = Utility.getTime();
         String successMsg = String.format(Constants.ATTEND_REG_LOC_LOG, time, attendance.getLon(), attendance.getLat());
@@ -296,8 +318,8 @@ public class LocationMonitoringService extends Service implements
         } else {
             Log.e(Constants.TAG, failedMsg);
             // write location updates to file
-            FileHandler.writeAttendanceToFile(LocationMonitoringService.this.getApplicationContext(), attendance);
-            Log.i(Constants.TAG, "Recorded in file");
+            OfflineLocationHandler.writeEntryToDB(LocationMonitoringService.this.getApplicationContext(), modelEntry);
+            Log.i(Constants.TAG, "Recorded in DB");
         }
     }
 

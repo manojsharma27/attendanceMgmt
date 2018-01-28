@@ -39,7 +39,14 @@ import com.google.android.gms.location.LocationSettingsStatusCodes;
 import com.ms.app.attendancemgmt.R;
 import com.ms.app.attendancemgmt.location.AddressLocator;
 import com.ms.app.attendancemgmt.location.PermissionUtils;
-import com.ms.app.attendancemgmt.location.StoredLocationUploader;
+import com.ms.app.attendancemgmt.location.offline.ModelEntry;
+import com.ms.app.attendancemgmt.location.offline.OfflineLocationHandler;
+import com.ms.app.attendancemgmt.location.offline.db.processor.DbReadTask;
+import com.ms.app.attendancemgmt.location.offline.db.processor.DbWriteTask;
+import com.ms.app.attendancemgmt.location.offline.db.processor.OfflineDBLocationResponseHandler;
+import com.ms.app.attendancemgmt.location.offline.db.processor.OfflineDbAsyncTasksProcessor;
+import com.ms.app.attendancemgmt.location.storedupload.DbStoredLocationUploader;
+import com.ms.app.attendancemgmt.location.storedupload.StoredLocationUploader;
 import com.ms.app.attendancemgmt.model.Attendance;
 import com.ms.app.attendancemgmt.register.ServerUpdateResponseHandler;
 import com.ms.app.attendancemgmt.register.UpdateAttendance;
@@ -390,13 +397,15 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
             Utility.writePref(context, Constants.DEVICE_ID, attendance.getDevId());
         }
 
-        UpdateAttendance updateAttendance = new UpdateAttendance(RegisterAttendanceActivity.this, attendance);
+        ModelEntry modelEntry = OfflineLocationHandler.prepareModelEntry(attendance);
+        UpdateAttendance updateAttendance = new UpdateAttendance(RegisterAttendanceActivity.this, modelEntry);
         updateAttendance.setContext(RegisterAttendanceActivity.this.getApplicationContext());
         updateAttendance.register();
     }
 
     @Override
-    public void handleRegisterAttendanceResponse(Response response, Attendance attendance) {
+    public void handleRegisterAttendanceResponse(Response response, ModelEntry modelEntry) {
+        Attendance attendance = modelEntry.getAttendance();
         boolean isSuccess = (null != response && response.message().equals(Constants.MSG_OK));
 
         String address = "";
@@ -404,6 +413,7 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
             address = attendance.getAddress();
         } else {
             address = AddressLocator.populateAddress(this.getApplicationContext(), attendance.getLat(), attendance.getLon());
+            attendance.setAddress(address);
         }
 
         String time = Utility.getTime();
@@ -419,8 +429,22 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
             Utility.writePref(getApplicationContext(), Constants.LAST_UPDATE_TO_SERVER_TIME, String.valueOf(System.currentTimeMillis()));
         } else {
             Log.i(Constants.TAG, "Failed to register to service, so recording in file.");
-            FileHandler.writeAttendanceToFile(this.getApplicationContext(), attendance);
+            writeToOfflineDb(modelEntry);
         }
+    }
+
+    private void writeToOfflineDb(final ModelEntry modelEntry) {
+        DbWriteTask writeTask = new DbWriteTask() {
+            @Override
+            public void process() {
+                OfflineLocationHandler.writeEntryToDB(RegisterAttendanceActivity.this.getApplicationContext(), modelEntry);
+            }
+        };
+
+        OfflineDbAsyncTasksProcessor processor = new OfflineDbAsyncTasksProcessor(writeTask);
+        processor.write();
+
+        Log.i(Constants.TAG, "Recorded in DB : " + modelEntry.toString());
     }
 
     @Override
@@ -437,24 +461,13 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
                 backgroundTaskHandler.stopLocationMonitoringService();
                 return true;
             case R.id.mitemReadStoredLocations:
-                List<Attendance> attendances = FileHandler.readAttendanceFromFile(this.getApplicationContext());
-                if (CollectionUtils.isEmpty(attendances)) {
-                    Utility.toastMsg(getApplicationContext(), "No stored locations to show");
-                    return true;
-                }
-                StringBuilder sb = new StringBuilder();
-                sb.append("Latitude, Longitude:\n\n");
-                for (Attendance attendance : attendances) {
-                    sb.append(String.format("( %s, %s )", attendance.getLat(), attendance.getLon())).append("\n");
-                }
-                Utility.showMessageDialog(RegisterAttendanceActivity.this, sb.toString());
-                return true;
+                return readAndShowOfflineDbLocations();
             case R.id.mitemSyncStoredLocations:
                 if (!Utility.checkInternetConnected(this.getApplicationContext())) {
                     Utility.toastMsg(getApplicationContext(), "Failed to sync stored locations");
                     return true;
                 }
-                StoredLocationUploader uploader = new StoredLocationUploader(this.getApplicationContext());
+                StoredLocationUploader uploader = new DbStoredLocationUploader(this.getApplicationContext());
                 uploader.checkLocationsAndUpload();
                 Utility.toastMsg(this.getApplicationContext(), "Started background sync of stored locations.");
                 return true;
@@ -475,6 +488,42 @@ public class RegisterAttendanceActivity extends AppCompatActivity implements Goo
                 return true;
         }
         return super.onOptionsItemSelected(item);
+    }
+
+    private boolean readAndShowOfflineDbLocations() {
+        DbReadTask pendingDbReadTask = new DbReadTask() {
+            @Override
+            public List<ModelEntry> process() {
+                return OfflineLocationHandler.pendingEntries(RegisterAttendanceActivity.this.getApplicationContext());
+            }
+        };
+
+        OfflineDBLocationResponseHandler dbLocationsHandler = new OfflineDBLocationResponseHandler() {
+            @Override
+            public void handleDbLocationResponse(List<ModelEntry> modelEntries) {
+                List<Attendance> attendances = new ArrayList<>(); //FileHandler.readAttendanceFromFile(this.getApplicationContext());
+
+                for (ModelEntry entry : modelEntries) {
+                    attendances.add(entry.getAttendance());
+                }
+
+                if (CollectionUtils.isEmpty(attendances)) {
+                    Utility.toastMsg(getApplicationContext(), "No stored locations to show");
+                    return;
+                }
+
+                StringBuilder sb = new StringBuilder();
+                sb.append("Latitude, Longitude:\n\n");
+                for (Attendance attendance : attendances) {
+                    sb.append(String.format("( %s, %s )", attendance.getLat(), attendance.getLon())).append("\n");
+                }
+                Utility.showMessageDialog(RegisterAttendanceActivity.this, sb.toString());
+            }
+        };
+
+        OfflineDbAsyncTasksProcessor reader = new OfflineDbAsyncTasksProcessor(pendingDbReadTask, dbLocationsHandler);
+        reader.read();
+        return true;
     }
 
     private Boolean exit = false;

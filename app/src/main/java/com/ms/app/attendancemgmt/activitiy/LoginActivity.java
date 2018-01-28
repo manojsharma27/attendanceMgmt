@@ -88,7 +88,7 @@ public class LoginActivity extends AppCompatActivity {
         txtPin.setOnEditorActionListener(new TextView.OnEditorActionListener() {
             @Override
             public boolean onEditorAction(TextView textView, int id, KeyEvent keyEvent) {
-                if (id == R.id.btnLogin || id == EditorInfo.IME_NULL) {
+                if ((id == R.id.btnLogin || id == EditorInfo.IME_NULL) && keyEvent.getAction() == KeyEvent.ACTION_DOWN) {
                     attemptLogin();
                     return true;
                 }
@@ -244,7 +244,7 @@ public class LoginActivity extends AppCompatActivity {
     }
 
     public void showTestDialog(View view) {
-        Utility.showCustomMessageDialog(this, String.format("%1$s%1$s%1$s%1$s%1$s%1$s%1$s%1$s%1$s%1$s%1$s%1$s%1$s%1$s","This is test message... \n"), R.mipmap.right);
+        Utility.showCustomMessageDialog(this, String.format("%1$s%1$s%1$s%1$s%1$s%1$s%1$s%1$s%1$s%1$s%1$s%1$s%1$s%1$s", "This is test message... \n"), R.mipmap.right);
     }
 
     /**
@@ -302,6 +302,7 @@ public class LoginActivity extends AppCompatActivity {
                     // write punch interval to preferences
                     if (0 != loginResp.getInterval()) {
                         long punchIntervalMillis = TimeUnit.SECONDS.toMillis(loginResp.getInterval());
+                        Log.i(Constants.TAG, "Stored punch interval : " + loginResp.getInterval() + "secs");
                         Utility.writePref(getApplicationContext(), Constants.PUNCHING_INTERVAL_KEY, String.valueOf(punchIntervalMillis));
                     }
                     return true;

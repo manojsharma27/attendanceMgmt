@@ -6,6 +6,7 @@ import android.util.Log;
 
 import com.ms.app.attendancemgmt.activitiy.RegisterAttendanceActivity;
 import com.ms.app.attendancemgmt.location.AddressLocator;
+import com.ms.app.attendancemgmt.location.offline.ModelEntry;
 import com.ms.app.attendancemgmt.model.Attendance;
 import com.ms.app.attendancemgmt.util.Constants;
 import com.ms.app.attendancemgmt.util.Utility;
@@ -20,13 +21,13 @@ import okhttp3.RequestBody;
 import okhttp3.Response;
 
 public class UpdateAttendance {
-    private Attendance attendance;
+    private ModelEntry modelEntry;
     private ServerUpdateResponseHandler responseHandler;
     private Context context;
 
-    public UpdateAttendance(ServerUpdateResponseHandler responseHandler, Attendance attendance) {
+    public UpdateAttendance(ServerUpdateResponseHandler responseHandler, ModelEntry modelEntry) {
         this.responseHandler = responseHandler;
-        this.attendance = attendance;
+        this.modelEntry = modelEntry;
     }
 
     public void setContext(Context context) {
@@ -35,16 +36,17 @@ public class UpdateAttendance {
 
     public void register() {
         AttendanceRegisterTask task = new AttendanceRegisterTask();
-        task.execute(attendance);
+        task.execute(modelEntry);
     }
 
-    private class AttendanceRegisterTask extends AsyncTask<Attendance, Integer, RegisterResponse> {
+    private class AttendanceRegisterTask extends AsyncTask<ModelEntry, Integer, RegisterResponse> {
 
         @Override
-        protected RegisterResponse doInBackground(Attendance... attendances) {
-            if (!ArrayUtils.isEmpty(attendances) && null != attendances[0]) {
+        protected RegisterResponse doInBackground(ModelEntry... entries) {
+            if (!ArrayUtils.isEmpty(entries) && null != entries[0]) {
                 try {
-                    Attendance attendance = attendances[0];
+                    ModelEntry modelEntry = entries[0];
+                    Attendance attendance = modelEntry.getAttendance();
                     attendance = populateDataIfNeeded(attendance);
                     String json = Utility.getObjectMapper().writeValueAsString(attendance);
                     Log.i(Constants.TAG, "Registering " + json);
@@ -58,7 +60,8 @@ public class UpdateAttendance {
                             .build();
 
                     Response response = client.newCall(request).execute();
-                    return new RegisterResponse(response, attendance);
+                    modelEntry.setAttendance(attendance);
+                    return new RegisterResponse(response, modelEntry);
 //                    Thread.sleep(1000);
 //                    return new Response.Builder()
 //                            .message(Constants.MSG_OK)
@@ -96,9 +99,9 @@ public class UpdateAttendance {
                 ((RegisterAttendanceActivity) responseHandler).showProgressBar(false);
             }
             if (null != regResp) {
-                responseHandler.handleRegisterAttendanceResponse(regResp.response, regResp.attendance);
+                responseHandler.handleRegisterAttendanceResponse(regResp.response, regResp.modelEntry);
             } else {
-                responseHandler.handleRegisterAttendanceResponse(null, attendance);
+                responseHandler.handleRegisterAttendanceResponse(null, modelEntry);
             }
         }
 
@@ -113,11 +116,11 @@ public class UpdateAttendance {
 
     private class RegisterResponse {
         private Response response;
-        private Attendance attendance;
+        private ModelEntry modelEntry;
 
-        private RegisterResponse(Response response, Attendance attendance) {
+        private RegisterResponse(Response response, ModelEntry modelEntry) {
             this.response = response;
-            this.attendance = attendance;
+            this.modelEntry = modelEntry;
         }
     }
 

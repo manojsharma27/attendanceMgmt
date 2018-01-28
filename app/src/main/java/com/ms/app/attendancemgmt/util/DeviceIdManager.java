@@ -1,7 +1,7 @@
 package com.ms.app.attendancemgmt.util;
 
 /**
- * Created by sharmama on 24/11/17.
+ * Manages fetching and populating device Id.
  */
 
 public class DeviceIdManager {
